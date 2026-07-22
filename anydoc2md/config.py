@@ -1,13 +1,25 @@
 import os
+import sys
 
-# Absolute paths to the OCR engine and PDF-rendering tool, so this works
-# even if PATH hasn't refreshed in the current shell/session.
-TESSERACT_EXE = os.path.expandvars(
-    r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"
-)
-POPPLER_BIN = os.path.expandvars(
-    r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-25.07.0\Library\bin"
-)
+# When frozen by PyInstaller, sys._MEIPASS points at the directory holding
+# bundled data -- the temp extraction folder in --onefile mode, or the
+# folder next to the .exe in --onedir mode. Either way, our own bundled
+# vendor/tesseract and vendor/poppler folders (added via the .spec file's
+# `datas`) live there, and we use those instead of requiring a system
+# install. Running from source (not frozen), fall back to a normal winget
+# install location, matching prior behavior.
+_FROZEN_BASE = getattr(sys, "_MEIPASS", None)
+
+if _FROZEN_BASE:
+    TESSERACT_EXE = os.path.join(_FROZEN_BASE, "vendor", "tesseract", "tesseract.exe")
+    POPPLER_BIN = os.path.join(_FROZEN_BASE, "vendor", "poppler")
+else:
+    TESSERACT_EXE = os.path.expandvars(
+        r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"
+    )
+    POPPLER_BIN = os.path.expandvars(
+        r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-25.07.0\Library\bin"
+    )
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"}
 EMAIL_EXTENSIONS = {".eml", ".msg"}

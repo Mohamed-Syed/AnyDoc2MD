@@ -1,4 +1,5 @@
-markitdown[pdf]>=0.1.6
+markitdown[pdf,docx,pptx,xlsx]>=0.1.6
+xlrd>=2.0.2
 pytesseract>=0.3.13
 pdf2image>=1.17.0
 Pillow>=12.3.0

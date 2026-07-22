@@ -8,6 +8,11 @@ build/
 dist/
 .pytest_cache/
 
+# Third-party binaries staged for the standalone .exe build. Not source
+# code, and Tesseract/Poppler together are ~150MB -- regenerate locally
+# with scripts/prepare_vendor.py rather than committing binaries to git.
+vendor/
+
 # Local dev journal only -- references real files/names used during
 # development and testing; never publish.
 SESSION_SUMMARY.md

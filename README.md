@@ -33,9 +33,15 @@ forwarded emails), and a fix for a common Arabic PDF text-extraction bug.
 
 ## Installation
 
-### 1. System dependencies (Windows)
+**Option A: standalone build (recommended for most users).** Download the
+prebuilt `AnyDoc2MD` folder from [Releases](../../releases), unzip it, and
+run `AnyDoc2MD.exe` inside. Nothing else to install — Tesseract OCR and
+Poppler are bundled in (see [Standalone build](#standalone-build) below
+for what exactly is bundled and why it's a large download).
 
-AnyDoc2MD needs two external tools on top of Python:
+**Option B: run from source.**
+
+### 1. System dependencies (Windows)
 
 ```powershell
 winget install UB-Mannheim.TesseractOCR
@@ -61,7 +67,9 @@ pip install -r requirements.txt
 python -m anydoc2md
 ```
 
-or double-click `run_anydoc2md.bat` for a no-console launch.
+or double-click `run_anydoc2md.bat` for a no-console launch (source
+install only — the standalone build's own `AnyDoc2MD.exe` needs no
+launcher).
 
 1. **Add Files...** or **Add Folder...** to queue up documents.
 2. Optionally choose an output folder (defaults to saving each `.md` next
@@ -69,6 +77,48 @@ or double-click `run_anydoc2md.bat` for a no-console launch.
 3. Leave **Use OCR** checked to handle scanned PDFs and images.
 4. Click **Convert All to .md** — status and a live log update per file as
    conversions complete.
+
+## Standalone build
+
+`anydoc2md.spec` builds a self-contained `.exe` (via PyInstaller) that
+needs nothing installed on the target machine — not even Python. It
+bundles:
+
+- The full Python runtime and all pip dependencies (~250-300 MB, driven
+  mostly by `onnxruntime`, kept for MarkItDown's ML-based file-type
+  detection — see the PR/commit discussion for the size-vs-accuracy
+  tradeoff considered here).
+- A **trimmed** copy of Tesseract OCR (~130 MB) and Poppler (~21 MB) —
+  only the exact binaries and DLLs verified (via PE import-table
+  analysis, not guesswork) to be needed at runtime; training tools, other
+  language packs, and unrelated CLI utilities are left out. See
+  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for exactly what's
+  included and under what license (Tesseract: Apache 2.0, Poppler: GPL).
+
+Total build size lands around 400-450 MB. That's the honest cost of
+"works on a fresh machine with zero setup" — Tesseract's own OCR engine
+(`libtesseract-5.dll`) alone is over 100 MB and can't be shrunk further
+without recompiling Tesseract from source.
+
+To build it yourself:
+
+```powershell
+pip install -r requirements.txt
+pip install pyinstaller
+python scripts/prepare_vendor.py    # stages a trimmed Tesseract+Poppler into vendor/
+                                     # (requires the winget installs from Option B, step 1)
+pyinstaller anydoc2md.spec --clean --noconfirm
+```
+
+The result is in `dist/AnyDoc2MD/`. It's built `--onedir` (not
+`--onefile`): onefile re-extracts its entire payload to a temp folder on
+*every* launch, which is a real, repeated performance cost at this size;
+onedir launches instantly since nothing needs unpacking. Zip the whole
+`dist/AnyDoc2MD/` folder for distribution.
+
+UPX compression was deliberately not used — it can trigger antivirus
+false positives (packing is also a common malware technique), a bad
+tradeoff for a tool meant to be freely downloaded and run by strangers.
 
 ## How it works
 

@@ -23,7 +23,12 @@ a = Analysis(
     binaries=[],
     datas=[
         ("assets", "assets"),
+        # The GPL requires the license text to travel with the binary, and
+        # MIT requires its notice to be retained -- so LICENSE, the notices,
+        # and every copyleft license text ship inside the bundle itself, not
+        # just in the repository.
         ("licenses", "licenses"),
+        ("LICENSE", "."),
         ("THIRD_PARTY_NOTICES.md", "."),
         *vendor_datas,
         *magika_datas,

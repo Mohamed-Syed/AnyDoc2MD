@@ -7,6 +7,9 @@ A desktop GUI that batch-converts PDFs, Office documents, images, and emails
 scanned content, recursive conversion of email attachments (including
 forwarded emails), and a fix for a common Arabic PDF text-extraction bug.
 
+Built with the help of [Claude Code](https://claude.com/claude-code) — part
+of an ongoing effort to grow my technical capabilities alongside AI tools.
+
 ![AnyDoc2MD screenshot](assets/screenshot.png)
 
 ## Features

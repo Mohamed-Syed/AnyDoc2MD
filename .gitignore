@@ -51,3 +51,6 @@ vendor/
 # Local dev journal only -- references real files/names used during
 # development and testing; never publish.
 SESSION_SUMMARY.md
+
+# Claude Code settings are per-machine preferences, not project config.
+.claude/settings.json

@@ -141,18 +141,6 @@ def _linux_lib_deps(binary):
     return deps
 
 
-def _macos_lib_deps(binary):
-    """Return non-system dylib paths `binary` links against (one level)."""
-    out = subprocess.run(["otool", "-L", binary], capture_output=True, text=True, check=False).stdout
-    deps = []
-    for line in out.splitlines()[1:]:  # first line echoes the binary itself
-        ref = line.strip().split(" (", 1)[0].strip()
-        # Bundle Homebrew/local libraries; leave the OS's own dylibs alone.
-        if ref.startswith(("/opt/homebrew/", "/usr/local/")) and os.path.exists(ref):
-            deps.append(os.path.realpath(ref))
-    return deps
-
-
 def _collect_libs(binaries, deps_fn):
     """Transitively collect every non-system lib the binaries need."""
     seen, queue = {}, list(binaries)
@@ -165,7 +153,13 @@ def _collect_libs(binaries, deps_fn):
     return list(seen)
 
 
-def _stage_posix(name, binaries, dst_dir, deps_fn):
+def _stage_linux(name, binaries, dst_dir):
+    """Copy binaries + their (transitive) non-system .so deps, flat, into dst_dir.
+
+    The bundled binaries are launched as subprocesses and config.py puts
+    dst_dir on LD_LIBRARY_PATH, so a flat directory of the binary next to
+    its libraries is enough for the loader to resolve them.
+    """
     os.makedirs(dst_dir, exist_ok=True)
     total = 0
     for b in binaries:
@@ -174,7 +168,7 @@ def _stage_posix(name, binaries, dst_dir, deps_fn):
         os.chmod(dst, 0o755)
         total += os.path.getsize(b)
 
-    libs = _collect_libs(binaries, deps_fn)
+    libs = _collect_libs(binaries, _linux_lib_deps)
     for lib in libs:
         dst = os.path.join(dst_dir, os.path.basename(lib))
         if not os.path.exists(dst):
@@ -183,6 +177,39 @@ def _stage_posix(name, binaries, dst_dir, deps_fn):
 
     print(f"{name}: staged {len(binaries)} binaries + {len(libs)} libraries, "
           f"{total / 1024 / 1024:.1f} MB -> {dst_dir}")
+
+
+def _stage_macos(name, binaries, dst_dir):
+    """Copy binaries, then let dylibbundler gather and relocate their dylibs.
+
+    macOS binaries reference many libraries via ``@rpath`` (Homebrew's
+    libpoppler among them), which neither an ``otool -L`` scan of absolute
+    paths nor ``DYLD_LIBRARY_PATH`` resolves. dylibbundler follows those
+    references, copies every dependency into ``<dst_dir>/libs``, and
+    rewrites each install name to ``@executable_path/libs/...`` -- and since
+    each binary is launched as its own subprocess, ``@executable_path`` is
+    that binary's own directory, so the bundle is self-contained with no
+    environment variables required.
+    """
+    os.makedirs(dst_dir, exist_ok=True)
+    staged = []
+    for b in binaries:
+        dst = os.path.join(dst_dir, os.path.basename(b))
+        shutil.copy2(b, dst)
+        os.chmod(dst, 0o755)
+        staged.append(dst)
+
+    libs_dir = os.path.join(dst_dir, "libs")
+    cmd = ["dylibbundler", "-of", "-cd", "-b", "-d", libs_dir, "-p", "@executable_path/libs/"]
+    for s in staged:
+        cmd += ["-x", s]
+    # stdin=DEVNULL: dylibbundler prompts interactively for any dependency
+    # it can't locate; in CI that would hang. Feeding EOF makes it fail
+    # fast and surface the missing library instead.
+    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)
+
+    n_libs = len(os.listdir(libs_dir)) if os.path.isdir(libs_dir) else 0
+    print(f"{name}: staged {len(staged)} binaries + {n_libs} libraries (dylibbundler) -> {dst_dir}")
 
 
 def _find_tessdata_dir():
@@ -221,15 +248,15 @@ def _stage_tessdata(vendor_dir):
 
 
 def _prepare_posix(vendor_dir):
-    deps_fn = _macos_lib_deps if _IS_MACOS else _linux_lib_deps
+    _stage = _stage_macos if _IS_MACOS else _stage_linux
 
     tesseract = _which_or_die("tesseract")
-    _stage_posix("Tesseract", [tesseract], os.path.join(vendor_dir, "tesseract"), deps_fn)
+    _stage("Tesseract", [tesseract], os.path.join(vendor_dir, "tesseract"))
     _stage_tessdata(vendor_dir)
 
     pdftoppm = _which_or_die("pdftoppm")
     pdftocairo = _which_or_die("pdftocairo")
-    _stage_posix("Poppler", [pdftoppm, pdftocairo], os.path.join(vendor_dir, "poppler"), deps_fn)
+    _stage("Poppler", [pdftoppm, pdftocairo], os.path.join(vendor_dir, "poppler"))
 
 
 def main():

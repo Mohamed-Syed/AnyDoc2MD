@@ -43,7 +43,9 @@ jobs:
 
       - name: Install Tesseract + Poppler (macOS)
         if: runner.os == 'macOS'
-        run: brew install tesseract poppler
+        # dylibbundler relocates the binaries' dependent dylibs (including
+        # @rpath ones) into the bundle -- see scripts/prepare_vendor.py.
+        run: brew install tesseract poppler dylibbundler
 
       - name: Generate macOS .icns from the PNG icon
         if: runner.os == 'macOS'

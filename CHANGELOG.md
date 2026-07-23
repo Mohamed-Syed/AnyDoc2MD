@@ -65,10 +65,12 @@ No changes to the conversion pipeline's normal-path behaviour.
 
 ### Changed
 
-- `CLAUDE.md` no longer contains machine-specific or personal details;
-  those moved to a gitignored local file.
-- `.gitignore` covers secrets (`.env`, key/certificate files), tooling
-  caches, editor directories, and local-only agent config.
+- `CLAUDE.md` now covers project orientation only; machine-specific
+  notes belong in `*.local.md`, excluded by convention.
+- `.gitignore` covers credentials (`.env`, key/certificate files),
+  tooling caches, editor directories, and build output.
+- The packaging CI job verifies the sdist against an allowlist of
+  expected paths, so anything unexpected fails the build.
 
 ## [1.0.0] - 2026-07-22
 

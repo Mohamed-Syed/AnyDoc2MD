@@ -59,15 +59,28 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install --upgrade pip build
       - run: python -m build
-      - name: Confirm no local paths or dev journal leaked into the sdist
+      - name: Verify the sdist contains only expected files
+        # Allowlist, not blocklist: anything unexpected fails the build,
+        # including files nobody thought to forbid. A blocklist only ever
+        # catches the cases already imagined -- and naming them here would
+        # publish the very filenames it is meant to keep private.
         run: |
           python - <<'PY'
-          import glob, tarfile, sys
-          forbidden = ("SESSION_SUMMARY.md", "CLAUDE.local.md", "vendor/")
+          import glob, re, sys, tarfile
+
+          ALLOWED = re.compile(
+              r"^[^/]+/("
+              r"PKG-INFO|README\.md|LICENSE|pyproject\.toml|setup\.cfg"
+              r"|anydoc2md(/[\w.-]+)?"
+              r"|tests(/[\w.-]+)?"
+              r"|[\w.-]+\.egg-info(/[\w.-]+)?"
+              r")$"
+          )
+
           sdist = glob.glob("dist/*.tar.gz")[0]
           names = tarfile.open(sdist).getnames()
-          bad = [n for n in names if any(f in n for f in forbidden)]
-          if bad:
-              sys.exit(f"forbidden paths in sdist: {bad}")
-          print(f"sdist clean ({len(names)} entries)")
+          unexpected = [n for n in names if "/" in n and not ALLOWED.match(n)]
+          if unexpected:
+              sys.exit("unexpected paths in sdist:\n  " + "\n  ".join(unexpected))
+          print(f"sdist verified: {len(names)} entries, all expected")
           PY

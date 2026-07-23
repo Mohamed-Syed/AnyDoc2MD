@@ -57,10 +57,11 @@ Tkinter GUI, built for feeding clean, AI-ready output into LLM workflows.
 
 ## Contributing conventions
 
-- Public-facing text (README, error messages, output Markdown) should
-  never contain a personal name, employer, real customer document name,
-  or local filesystem path. Use `example.com` addresses and generic
-  filenames in samples and screenshots.
-- Anything genuinely machine-local (dev journals, scratch notes, local
-  agent preferences) belongs in a gitignored `*.local.md` /
-  `.claude/settings.local.json`, not in a tracked file.
+- Public-facing text (README, error messages, output Markdown, commit
+  messages) uses generic examples only — `example.com` addresses,
+  invented filenames, no absolute paths. Screenshots and sample data
+  follow the same rule.
+- Machine-specific notes and tooling preferences belong in a
+  `*.local.md` or `*.local.json` file, which this repo's `.gitignore`
+  excludes by convention. Keep tracked files free of anything that only
+  makes sense on one machine.

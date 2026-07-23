@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **The GUI log no longer leaks local filesystem paths on success.** Every
+  completed conversion logged the full absolute source and output paths
+  verbatim; only the failure path was routed through
+  `redact_local_paths()`. Since users routinely paste or screenshot this
+  log into bug reports, a successful run could carry the operator's
+  username and folder layout into a public issue — the exact thing
+  `redact_local_paths()` exists to prevent. Both the per-file log lines
+  and the "Added N file(s) from folder: ..." message are now redacted.
+
 ## [1.1.0] - 2026-07-23
 
 Hardening and repository-hygiene release ahead of public distribution.

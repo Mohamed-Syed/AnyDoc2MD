@@ -9,7 +9,7 @@ from tkinter import filedialog, ttk, messagebox, scrolledtext
 from . import __version__
 from .config import SUPPORTED_TYPES, FOLDER_SCAN_EXTENSIONS
 from .converter import convert_one
-from .text_utils import describe_exception
+from .text_utils import describe_exception, redact_local_paths
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
@@ -220,7 +220,7 @@ class AnyDoc2MDApp:
                     full = os.path.join(root_dir, name)
                     if self._add_path(full):
                         added += 1
-        self.log_msg(f"Added {added} file(s) from folder: {folder}")
+        self.log_msg(f"Added {added} file(s) from folder: {redact_local_paths(folder)}")
 
     def _add_path(self, path):
         if path in self.files:
@@ -291,12 +291,18 @@ class AnyDoc2MDApp:
         return out_path, method
 
     def _on_file_done(self, src_path, ok, detail, out_path):
+        # Logged paths are redacted to a bare filename: this log is shown
+        # on screen and users routinely paste or screenshot it into bug
+        # reports, so it must not carry the operator's username and folder
+        # layout any more than the converted .md output does.
         if ok:
             self.tree.item(src_path, values=(self.tree.item(src_path, "values")[0], detail), tags=("ok",))
-            self.log_msg(f"[OK, {detail}] {src_path} -> {out_path}", "ok")
+            self.log_msg(
+                f"[OK, {detail}] {redact_local_paths(src_path)} -> {redact_local_paths(out_path)}", "ok"
+            )
         else:
             self.tree.item(src_path, values=(self.tree.item(src_path, "values")[0], "Failed"), tags=("failed",))
-            self.log_msg(f"[FAILED] {src_path} -> {detail}", "failed")
+            self.log_msg(f"[FAILED] {redact_local_paths(src_path)} -> {detail}", "failed")
 
     def _on_all_done(self, ok_count, fail_count):
         self.log_msg(f"Done. {ok_count} succeeded, {fail_count} failed.", "info")

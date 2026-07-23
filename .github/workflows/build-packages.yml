@@ -1,0 +1,111 @@
+name: Build standalone packages
+
+# Builds the self-contained Linux and macOS bundles on their native
+# runners (PyInstaller cannot cross-compile). The Windows bundle is built
+# by the maintainer locally from the winget-installed toolchain. Runs on
+# demand, on version tags, and on pushes to the packaging branch while it
+# is being iterated on.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    branches: [linux-mac-packaging]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+          - os: macos-latest
+            name: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install Tesseract + Poppler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd poppler-utils
+
+      - name: Install Tesseract + Poppler (macOS)
+        if: runner.os == 'macOS'
+        run: brew install tesseract poppler
+
+      - name: Generate macOS .icns from the PNG icon
+        if: runner.os == 'macOS'
+        run: |
+          sips -s format icns assets/icon.png --out assets/icon.icns || \
+            echo "icns generation failed; building without a bundle icon"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Stage the trimmed Tesseract/Poppler into vendor/
+        run: python scripts/prepare_vendor.py
+
+      - name: Build the standalone bundle
+        run: pyinstaller anydoc2md.spec --clean --noconfirm
+
+      - name: Smoke-test the bundled binaries resolve their libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The whole point of bundling is that the vendored tesseract /
+          # pdftoppm run against the vendored libraries, not a system
+          # install. Execute them with only the vendored dir on the loader
+          # path to prove that holds.
+          tess=$(find dist -type f -name tesseract | head -n1)
+          ppm=$(find dist -type f -name pdftoppm | head -n1)
+          echo "tesseract: $tess"
+          echo "pdftoppm:  $ppm"
+          test -n "$tess" && test -n "$ppm"
+          if [ "${RUNNER_OS}" = "macOS" ]; then
+            DYLD_LIBRARY_PATH="$(dirname "$tess")" "$tess" --version
+            DYLD_LIBRARY_PATH="$(dirname "$ppm")" "$ppm" -v
+          else
+            LD_LIBRARY_PATH="$(dirname "$tess")" "$tess" --version
+            LD_LIBRARY_PATH="$(dirname "$ppm")" "$ppm" -v
+          fi
+          # Language data must be present for OCR to work at all.
+          find dist -name eng.traineddata | head -n1 | grep -q . \
+            || { echo "eng.traineddata missing from bundle"; exit 1; }
+          # License texts must ship inside the bundle (GPL/MIT requirement).
+          find dist -name 'LICENSE' | head -n1 | grep -q . \
+            || { echo "LICENSE missing from bundle"; exit 1; }
+
+      - name: Package the Linux bundle
+        if: runner.os == 'Linux'
+        run: |
+          tar -czf "AnyDoc2MD-${{ matrix.name }}.tar.gz" -C dist AnyDoc2MD
+
+      - name: Package the macOS bundle
+        if: runner.os == 'macOS'
+        run: |
+          # ditto preserves macOS bundle metadata that plain zip drops.
+          ditto -c -k --keepParent "dist/AnyDoc2MD.app" "AnyDoc2MD-${{ matrix.name }}.zip"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyDoc2MD-${{ matrix.name }}
+          path: |
+            AnyDoc2MD-${{ matrix.name }}.tar.gz
+            AnyDoc2MD-${{ matrix.name }}.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -85,6 +85,7 @@ class TestRedactLocalPaths:
             r"failed on \\fileserver\share\team\p.png",
             "failed on /home/alice/tmp/p.png",
             "failed on /Users/alice/Documents/p.png",
+            "failed on /root/alice/p.png",
         ],
     )
     def test_directory_components_are_removed(self, text):

@@ -24,9 +24,11 @@ _WINDOWS_RESERVED_NAMES = {
     *(f"LPT{i}" for i in range(1, 10)),
 }
 
-# Windows caps a single path component at 255 characters. A longer
-# attachment filename makes open() fail outright, so truncate the stem and
-# keep the extension (which drives conversion routing).
+# Windows caps a single path component at 255 characters; a longer
+# attachment filename makes open() fail outright. 120 is a deliberately
+# conservative margin below that limit -- room is left for the destination
+# directory and a distinguishing suffix a caller might add, without ever
+# risking the actual 255-character wall.
 _MAX_FILENAME_LENGTH = 120
 
 
@@ -69,7 +71,9 @@ _PATH_PATTERNS = (
     # UNC share, e.g. \\fileserver\share\
     re.compile(r"\\\\[^\\/\r\n\"']+[\\/](?:[^\\/\r\n\"']*[\\/])*"),
     # POSIX absolute path under a directory that implies a real home/tmp
-    re.compile(r"/(?:home|Users|tmp|var|private)/(?:[^/\r\n\"']*/)*"),
+    # (root's home is /root, not /home/root -- CI runners and containers
+    # commonly run as root, so it needs its own alternative here)
+    re.compile(r"/(?:home|Users|root|tmp|var|private)/(?:[^/\r\n\"']*/)*"),
 )
 
 

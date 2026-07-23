@@ -40,7 +40,7 @@ bound them:
 | Unbounded work via mass attachments | Attachment count and aggregate-size caps | `email_convert.py`, `MAX_EMAIL_ATTACHMENT*` |
 | Unbounded rasterization (PDF with huge or numerous pages) | Page cap plus an explicit Pillow pixel ceiling before rendering | `ocr.py`, `MAX_OCR_PDF_PAGES`, `MAX_OCR_IMAGE_PIXELS` |
 | Path traversal via attachment filenames | Filenames flattened to a basename, illegal characters replaced, Windows device names renamed, length capped | `text_utils.safe_filename` |
-| Argument injection into OCR/PDF tooling | No `shell=True` anywhere; this project makes no subprocess calls of its own, and every path handed to `pytesseract`/`pdf2image` is an absolute path it constructed | `ocr.py` |
+| Argument injection into OCR/PDF tooling | No `shell=True` anywhere; the only process this project launches itself is the OS file manager on a folder it created (an argument list, not a shell string), and every path handed to `pytesseract`/`pdf2image` is an absolute path it constructed | `ocr.py`, `gui.py` |
 | Leaking the operator's local paths into shared output | Exception text is redacted before it reaches converted Markdown or the GUI log | `text_utils.redact_local_paths` |
 
 Each control has regression tests in `tests/`.

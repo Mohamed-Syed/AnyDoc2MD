@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,6 +15,10 @@ from .text_utils import describe_exception, redact_local_paths
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
+ICON_PNG_PATH = os.path.join(ASSETS_DIR, "icon.png")
+
+_IS_WINDOWS = sys.platform.startswith("win")
+_IS_MACOS = sys.platform == "darwin"
 
 ACCENT = "#2563EB"
 BG = "#F4F6FB"
@@ -39,8 +45,16 @@ class AnyDoc2MDApp:
         self._build_ui()
 
     def _set_icon(self):
+        # iconbitmap(.ico) is the reliable path on Windows; on Linux/macOS
+        # Tk's .ico support is absent or flaky, so use the PNG via
+        # iconphoto there. Either failing is cosmetic and must never abort
+        # startup.
         try:
-            self.root.iconbitmap(default=ICON_PATH)
+            if _IS_WINDOWS:
+                self.root.iconbitmap(default=ICON_PATH)
+            else:
+                self._icon_image = tk.PhotoImage(file=ICON_PNG_PATH)
+                self.root.iconphoto(True, self._icon_image)
         except Exception:
             pass
 
@@ -251,13 +265,23 @@ class AnyDoc2MDApp:
         self.output_dir.set("(same folder as each file)")
 
     def _open_output_folder(self):
-        if self._last_output_folder and os.path.isdir(self._last_output_folder):
-            # noqa justification: the argument is a directory this app just
-            # wrote to -- either one the user picked in a folder dialog or
-            # the source file's own parent. It is never derived from
-            # document content, and startfile on a verified directory opens
-            # Explorer, not an arbitrary executable.
-            os.startfile(self._last_output_folder)  # noqa: S606
+        folder = self._last_output_folder
+        if not (folder and os.path.isdir(folder)):
+            return
+        # The argument is a directory this app just wrote to -- either one
+        # the user picked in a folder dialog or the source file's own
+        # parent. It is never derived from document content, and each
+        # opener is handed an argument list (never a shell string), so
+        # there is no injection surface. See SECURITY.md.
+        try:
+            if _IS_WINDOWS:
+                os.startfile(folder)  # noqa: S606
+            elif _IS_MACOS:
+                subprocess.run(["open", folder], check=False)  # noqa: S603, S607
+            else:
+                subprocess.run(["xdg-open", folder], check=False)  # noqa: S603, S607
+        except Exception:
+            pass
 
     def start_conversion(self):
         if not self.files:

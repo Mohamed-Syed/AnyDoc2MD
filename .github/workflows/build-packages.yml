@@ -8,13 +8,12 @@ name: Build standalone packages
 # On a `vX.Y.Z` tag push, the built packages (plus SHA-256 checksums) are
 # attached to a *draft* GitHub Release -- never published automatically,
 # so there's always a review step before anything goes out. Also runs on
-# demand and on pushes to the packaging branch while it's being iterated
-# on; those runs stop at the build+verify stage and touch no release.
+# demand (workflow_dispatch) for a build+verify-only dry run that touches
+# no release.
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
-    branches: [linux-mac-packaging]
 
 permissions:
   contents: read

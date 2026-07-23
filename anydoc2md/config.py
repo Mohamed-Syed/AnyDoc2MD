@@ -26,6 +26,23 @@ if _FROZEN_BASE:
     _bundled_tessdata = os.path.join(_FROZEN_BASE, "vendor", "tesseract", "tessdata")
     if os.path.isdir(_bundled_tessdata):
         os.environ.setdefault("TESSDATA_PREFIX", _bundled_tessdata)
+
+    # On Linux/macOS the vendored tesseract/pdftoppm are launched as
+    # subprocesses and their shared libraries are staged right next to them
+    # (see scripts/prepare_vendor.py). Prepend those directories to the
+    # dynamic-loader search path so the child processes resolve the bundled
+    # libraries rather than requiring a matching system install. (Windows
+    # resolves DLLs from the executable's own directory, so it needs none
+    # of this.)
+    if not _IS_WINDOWS:
+        _lib_var = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
+        _vendor_lib_dirs = [
+            os.path.join(_FROZEN_BASE, "vendor", "tesseract"),
+            os.path.join(_FROZEN_BASE, "vendor", "poppler"),
+        ]
+        _existing = os.environ.get(_lib_var, "")
+        _parts = _vendor_lib_dirs + ([_existing] if _existing else [])
+        os.environ[_lib_var] = os.pathsep.join(_parts)
 elif _IS_WINDOWS:
     # Running from source on Windows: fall back to the default winget
     # install locations.

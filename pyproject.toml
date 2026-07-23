@@ -68,3 +68,8 @@ ignore = ["E501", "S101", "S110", "S112"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S", "B"]
+# The vendor-staging build script legitimately runs the platform's own
+# library-inspection tools (`ldd`/`otool`, found on PATH) and sets the
+# executable bit on the binaries it stages -- both are inherent to what a
+# packaging script does, not untrusted-input hazards.
+"scripts/*" = ["S603", "S607", "S103"]

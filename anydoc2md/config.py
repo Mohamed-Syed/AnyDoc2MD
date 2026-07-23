@@ -1,20 +1,34 @@
 import glob
 import os
+import shutil
 import sys
 
 # When frozen by PyInstaller, sys._MEIPASS points at the directory holding
 # bundled data -- the temp extraction folder in --onefile mode, or the
-# folder next to the .exe in --onedir mode. Either way, our own bundled
-# vendor/tesseract and vendor/poppler folders (added via the .spec file's
-# `datas`) live there, and we use those instead of requiring a system
-# install. Running from source (not frozen), fall back to a normal winget
-# install location, matching prior behavior.
+# folder next to the executable in --onedir mode. Either way, our own
+# bundled vendor/tesseract and vendor/poppler folders (staged per-platform
+# by scripts/prepare_vendor.py and added via the .spec file's `datas`) live
+# there, and we use those instead of requiring a system install.
 _FROZEN_BASE = getattr(sys, "_MEIPASS", None)
+_IS_WINDOWS = sys.platform.startswith("win")
+
+# The Tesseract executable is `tesseract.exe` on Windows, plain `tesseract`
+# everywhere else -- both when bundled and when found on PATH.
+_TESSERACT_BINARY = "tesseract.exe" if _IS_WINDOWS else "tesseract"
 
 if _FROZEN_BASE:
-    TESSERACT_EXE = os.path.join(_FROZEN_BASE, "vendor", "tesseract", "tesseract.exe")
+    TESSERACT_EXE = os.path.join(_FROZEN_BASE, "vendor", "tesseract", _TESSERACT_BINARY)
     POPPLER_BIN = os.path.join(_FROZEN_BASE, "vendor", "poppler")
-else:
+
+    # Tesseract locates its language data via TESSDATA_PREFIX. Point it at
+    # the bundled copy so a frozen build is genuinely self-contained and
+    # never falls back to (or collides with) a system tessdata directory.
+    _bundled_tessdata = os.path.join(_FROZEN_BASE, "vendor", "tesseract", "tessdata")
+    if os.path.isdir(_bundled_tessdata):
+        os.environ.setdefault("TESSDATA_PREFIX", _bundled_tessdata)
+elif _IS_WINDOWS:
+    # Running from source on Windows: fall back to the default winget
+    # install locations.
     TESSERACT_EXE = os.path.expandvars(
         r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"
     )
@@ -31,6 +45,17 @@ else:
     )
     _poppler_matches = sorted(glob.glob(_POPPLER_GLOB))
     POPPLER_BIN = _poppler_matches[-1] if _poppler_matches else _POPPLER_GLOB
+else:
+    # Running from source on Linux/macOS: Tesseract and Poppler are
+    # expected to be installed system-wide and on PATH
+    # (`apt install tesseract-ocr poppler-utils` /
+    # `brew install tesseract poppler`). Resolve them via PATH; when a tool
+    # isn't found, fall back to a value that fails the os.path.exists()
+    # checks in ocr.py, which then cleanly defers to the PATH-based default
+    # (pytesseract's bare `tesseract`, pdf2image's PATH lookup).
+    TESSERACT_EXE = shutil.which("tesseract") or _TESSERACT_BINARY
+    _pdftoppm = shutil.which("pdftoppm")
+    POPPLER_BIN = os.path.dirname(_pdftoppm) if _pdftoppm else ""
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"}
 EMAIL_EXTENSIONS = {".eml", ".msg"}

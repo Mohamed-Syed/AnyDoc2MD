@@ -199,12 +199,15 @@ to report a vulnerability.
   components first. A failed attachment reports `invoice.pdf`, never the
   temp path that would carry your username and folder layout.
 - **No shell/subprocess injection risk**: this project makes no
-  `subprocess`/shell calls of its own; the two dependencies that do
-  (`pytesseract`, `pdf2image`) invoke Tesseract/Poppler with argument
-  lists (never `shell=True`), and every path this project passes to them
-  is always an absolute path built via `os.path.join`/`tempfile.mkdtemp`
-  — never a bare, attacker-controlled string that could be misread as a
-  command-line flag.
+  `shell=True` calls anywhere. Its one direct process launch — opening the
+  finished output folder in the OS file manager (`explorer` / `open` /
+  `xdg-open`) — is handed an argument list containing a directory the app
+  itself created, never anything derived from document content. The two
+  dependencies that shell out (`pytesseract`, `pdf2image`) invoke
+  Tesseract/Poppler with argument lists (never `shell=True`), and every
+  path this project passes to them is an absolute path built via
+  `os.path.join`/`tempfile.mkdtemp` — never a bare, attacker-controlled
+  string that could be misread as a command-line flag.
 
 ## Built on
 

@@ -2,6 +2,10 @@
 
 **Any document → clean Markdown, ready for humans or AI.**
 
+[![CI](https://github.com/Mohamed-Syed/AnyDoc2MD/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohamed-Syed/AnyDoc2MD/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+
 A desktop GUI that batch-converts PDFs, Office documents, images, and emails
 (`.eml` / `.msg`, attachments included) into Markdown — with OCR fallback for
 scanned content, recursive conversion of email attachments (including
@@ -88,9 +92,10 @@ needs nothing installed on the target machine — not even Python. It
 bundles:
 
 - The full Python runtime and all pip dependencies (~250-300 MB, driven
-  mostly by `onnxruntime`, kept for MarkItDown's ML-based file-type
-  detection — see the PR/commit discussion for the size-vs-accuracy
-  tradeoff considered here).
+  mostly by `onnxruntime`, which is kept because MarkItDown uses it for
+  ML-based file-type detection — dropping it would shrink the build
+  substantially but make extension-less and mislabelled files fall back
+  to guesswork).
 - A **trimmed** copy of Tesseract OCR (~130 MB) and Poppler (~21 MB) —
   only the exact binaries and DLLs verified (via PE import-table
   analysis, not guesswork) to be needed at runtime; training tools, other
@@ -146,7 +151,10 @@ across threads.
 
 This tool's entire purpose is processing files that may come from an
 untrusted source — an email attachment, a downloaded zip — so it includes
-guards against maliciously crafted input, not just malformed input:
+guards against maliciously crafted input, not just malformed input. Each
+guard below has regression tests in `tests/`; see
+[SECURITY.md](SECURITY.md) for the threat model these come from and how
+to report a vulnerability.
 
 - **Email nesting depth cap** (`MAX_EMAIL_NESTING_DEPTH`, default 10): a
   forwarded email containing a forwarded email containing a forwarded
@@ -162,14 +170,34 @@ guards against maliciously crafted input, not just malformed input:
   uncompressed size, entry count, and — recursively, up to a depth of 3 —
   the same for any zip nested inside it) and refuse to convert it if
   those exceed sane limits (300 MB uncompressed / 2,000 entries by
-  default), without ever decompressing untrusted content to make that
-  decision. This defeats all standard/known zip-bomb techniques; see the
-  docstring on `assert_zip_is_safe` for the one narrow, documented edge
-  case it doesn't cover.
-- **Path traversal**: attachment filenames from parsed emails are passed
-  through `os.path.basename()` before any filesystem use, so a
-  crafted `../../` filename can't escape the temp directory it's
-  extracted into.
+  default). The archive is opened by path and only its metadata is read,
+  so a multi-gigabyte input is never buffered into memory before the
+  check runs; descending into a nested zip is the one place data must be
+  decompressed, and that read stops at the size limit rather than
+  trusting the declared entry size — which closes the gap a deliberately
+  understated header would otherwise open.
+- **Bounded OCR rasterization**: a PDF may declare unlimited pages and
+  arbitrarily large page dimensions, and rendering at 300 dpi is the most
+  expensive thing this tool does — a single crafted page could ask for a
+  multi-gigapixel bitmap. Page count is checked (via Poppler's metadata)
+  before anything is rendered, and Pillow's decompression-bomb ceiling is
+  pinned explicitly rather than left to vary with the installed version
+  (`MAX_OCR_PDF_PAGES`, `MAX_OCR_IMAGE_PIXELS`).
+- **Attachment caps**: a single `.eml` can declare unlimited attachments,
+  each of which gets written to disk and recursively converted. Both the
+  count and the aggregate size are bounded.
+- **Path traversal**: attachment filenames from parsed emails are reduced
+  to a bare basename before any filesystem use, so a crafted `../../`
+  filename can't escape the temp directory it's extracted into.
+  Separators from *both* platforms are stripped (not just the host's),
+  Windows reserved device names (`CON`, `NUL`, `COM1`…) are renamed so
+  they can't be opened as devices, and over-long names are truncated
+  below the 255-character path-component limit.
+- **No local paths in output**: converted `.md` files are meant to be
+  shared and fed to LLMs, so error text embedded in them — and in the GUI
+  log that users paste into bug reports — is stripped of directory
+  components first. A failed attachment reports `invoice.pdf`, never the
+  temp path that would carry your username and folder layout.
 - **No shell/subprocess injection risk**: this project makes no
   `subprocess`/shell calls of its own; the two dependencies that do
   (`pytesseract`, `pdf2image`) invoke Tesseract/Poppler with argument
@@ -191,9 +219,9 @@ endorsed by Microsoft.
 - **Only English OCR** is installed by default. Add other Tesseract
   language packs (`tesseract-ocr-<lang>` via your package manager, or the
   relevant `.traineddata` file) for other languages.
-- **Poppler's path is version-pinned** in `config.py` to the folder name at
-  install time — a future `winget upgrade` may change that folder name and
-  require updating the path.
+- **Very long documents are OCR'd only in part.** The OCR fallback stops
+  after `MAX_OCR_PDF_PAGES` (200) pages and says so in the output; raise
+  it in `config.py` if you routinely convert longer scans.
 - **The 20-character "is this PDF scanned" heuristic** can occasionally
   trigger OCR on a PDF with a real but very sparse text layer. Harmless,
   just slower.
@@ -211,6 +239,39 @@ endorsed by Microsoft.
   with no reliable open-source parser; export OneNote pages to PDF or Word
   first if you need to convert them.
 
+## Development
+
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest        # unit tests
+ruff check .            # lint
+```
+
+The test suite covers the pure-logic modules — every security control in
+`safety.py`, filename sanitizing and path redaction in `text_utils.py`,
+the Arabic reordering heuristic, email parsing, and conversion dispatch.
+The Tkinter GUI is deliberately not automated (it proved fragile and
+unreliable); for end-to-end checks, call
+`anydoc2md.converter.convert_one(path, use_ocr)` directly against a real
+file — that's the same entrypoint the GUI uses.
+
+CI runs the suite on Windows and Linux. Please don't attach real
+personal or confidential documents to issues; a small synthetic file that
+reproduces the problem is more useful anyway.
+
+## Reporting a vulnerability
+
+Please report security issues privately — see [SECURITY.md](SECURITY.md),
+which also documents the threat model and its known residual limitations.
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+AnyDoc2MD's own source code is **MIT** — see [LICENSE](LICENSE).
+
+**The prebuilt `.exe` is a combined work under the GPL v3**, because it
+bundles `extract-msg` (GPL-3.0, used for Outlook `.msg` parsing) and
+Poppler (GPL-2.0-or-later). This does not affect reusing AnyDoc2MD's own
+code under MIT, and it does not affect running from source for your own
+use. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full
+breakdown, the written offer for source, and how to build without the
+copyleft dependency.

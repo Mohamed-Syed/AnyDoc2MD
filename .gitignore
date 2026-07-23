@@ -1,12 +1,47 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.egg-info/
+.eggs/
 .venv/
 venv/
-*.egg-info/
+env/
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build output
 build/
 dist/
-.pytest_cache/
+*.manifest
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Secrets and local environment. Nothing in this project needs an API key
+# today, but an accidentally-created .env must never be publishable.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+
+# Local-only agent/editor config and notes. CLAUDE.md is tracked and
+# public; CLAUDE.local.md and settings.local.json hold machine-specific
+# paths, personal identities, and preferences that must not be published.
+CLAUDE.local.md
+*.local.md
+.claude/settings.local.json
 
 # Third-party binaries staged for the standalone .exe build. Not source
 # code, and Tesseract/Poppler together are ~150MB -- regenerate locally

@@ -52,7 +52,7 @@ POPPLER_FILES = [
 def stage(name, src_dir, files, dst_dir):
     if not os.path.isdir(src_dir):
         print(f"ERROR: {name} not found at {src_dir}")
-        print(f"Install it first (see the docstring at the top of this script).")
+        print("Install it first (see the docstring at the top of this script).")
         sys.exit(1)
 
     os.makedirs(dst_dir, exist_ok=True)

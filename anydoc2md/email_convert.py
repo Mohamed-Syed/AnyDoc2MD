@@ -7,8 +7,12 @@ from email.parser import BytesParser
 
 import extract_msg
 
-from .config import MAX_EMAIL_NESTING_DEPTH
-from .text_utils import clean_str, safe_filename, html_to_text
+from .config import (
+    MAX_EMAIL_NESTING_DEPTH,
+    MAX_EMAIL_ATTACHMENTS,
+    MAX_EMAIL_ATTACHMENT_TOTAL_BYTES,
+)
+from .text_utils import clean_str, safe_filename, html_to_text, describe_exception
 
 # Patterns marking the start of a quoted reply/forward trail in an email
 # body. Everything from the earliest match onward is trimmed to keep
@@ -49,7 +53,13 @@ def _parse_eml(path):
         body_text = ""
 
     attachments = []
+    total_bytes = 0
     for part in msg.iter_attachments():
+        # An .eml may declare an unbounded number of attachments, each of
+        # which gets written to disk and recursively converted. Bound both
+        # the count and the aggregate size before doing that work.
+        if len(attachments) >= MAX_EMAIL_ATTACHMENTS:
+            break
         filename = safe_filename(part.get_filename())
         try:
             if part.get_content_type() == "message/rfc822":
@@ -66,6 +76,9 @@ def _parse_eml(path):
         except Exception:
             data = None
         if data:
+            if total_bytes + len(data) > MAX_EMAIL_ATTACHMENT_TOTAL_BYTES:
+                break
+            total_bytes += len(data)
             attachments.append((filename, data))
 
     return {
@@ -91,6 +104,8 @@ def _parse_msg(path, tmp_dir):
 
         attachments = []
         for att in m.attachments:
+            if len(attachments) >= MAX_EMAIL_ATTACHMENTS:
+                break
             filename = safe_filename(
                 getattr(att, "longFilename", None) or getattr(att, "shortFilename", None)
             )
@@ -136,7 +151,7 @@ def convert_email(src_path, convert_one, depth=0):
             f"(Nested email attachment exceeded the maximum depth of "
             f"{MAX_EMAIL_NESTING_DEPTH} -- stopped here to avoid unbounded "
             f"processing of a deeply/maliciously nested file.)",
-            f"skipped (nesting too deep)",
+            "skipped (nesting too deep)",
         )
 
     ext = os.path.splitext(src_path)[1].lower()
@@ -183,7 +198,12 @@ def convert_email(src_path, convert_one, depth=0):
                 try:
                     att_text, att_method = convert_one(att_path)
                 except Exception as e:
-                    att_text, att_method = f"(Could not convert this attachment: {e})", "failed"
+                    # describe_exception, not str(e): the attachment lives in
+                    # a temp directory, and library errors routinely quote its
+                    # full path -- which would bake this machine's username and
+                    # folder layout into a .md file meant to be shared.
+                    att_text = f"(Could not convert this attachment: {describe_exception(e)})"
+                    att_method = "failed"
                 lines.append("")
                 lines.append(f"### {i}. {filename} ({att_method})")
                 lines.append("")

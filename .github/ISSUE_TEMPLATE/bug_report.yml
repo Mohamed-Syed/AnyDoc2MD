@@ -1,0 +1,71 @@
+name: Bug report
+description: A conversion produced wrong output, failed, or the app misbehaved.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠️ Before you attach a file
+
+        This tool converts documents that are often **confidential** —
+        invoices, contracts, correspondence, scans. Please do not attach a
+        real personal or customer document, and redact filenames and email
+        addresses in any log you paste.
+
+        A small synthetic file that reproduces the problem is more useful
+        anyway, because it can be added to the test suite.
+
+        Found a *security* issue instead? Report it privately — see
+        [SECURITY.md](https://github.com/Mohamed-Syed/AnyDoc2MD/blob/master/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: AnyDoc2MD version
+      description: Shown under Help → About AnyDoc2MD.
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options:
+        - Standalone .exe from Releases
+        - From source (pip install -r requirements.txt)
+    validations:
+      required: true
+
+  - type: input
+    id: filetype
+    attributes:
+      label: File type involved
+      placeholder: ".pdf (scanned), .msg with attachments, .xlsx, ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add Files... → selected a scanned PDF
+        2. Left "Use OCR" checked
+        3. Clicked Convert All to .md
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant log output (redacted)
+      description: From the Log pane. Rendered as code, no backticks needed.
+      render: text

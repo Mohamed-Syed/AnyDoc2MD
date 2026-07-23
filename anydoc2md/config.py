@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 
@@ -17,9 +18,19 @@ else:
     TESSERACT_EXE = os.path.expandvars(
         r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"
     )
-    POPPLER_BIN = os.path.expandvars(
-        r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-25.07.0\Library\bin"
+
+    # winget installs Poppler into a version-stamped folder
+    # (poppler-25.07.0, poppler-25.10.0, ...), so a hardcoded path breaks
+    # on the next `winget upgrade`. Resolve the newest matching install at
+    # import time instead, and fall back to the glob pattern itself so the
+    # "not found" path in ocr.py behaves the same as before when nothing
+    # matches.
+    _POPPLER_GLOB = os.path.expandvars(
+        r"%LOCALAPPDATA%\Microsoft\WinGet\Packages"
+        r"\oschwartz10612.Poppler_*\poppler-*\Library\bin"
     )
+    _poppler_matches = sorted(glob.glob(_POPPLER_GLOB))
+    POPPLER_BIN = _poppler_matches[-1] if _poppler_matches else _POPPLER_GLOB
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"}
 EMAIL_EXTENSIONS = {".eml", ".msg"}
@@ -48,6 +59,26 @@ MAX_EMAIL_NESTING_DEPTH = 10
 MAX_ZIP_UNCOMPRESSED_BYTES = 300 * 1024 * 1024  # 300 MB
 MAX_ZIP_ENTRIES = 2000
 MAX_ZIP_NESTING_DEPTH = 3
+
+# OCR rasterization caps. Rendering a PDF to images at 300 dpi is by far
+# the most expensive thing this tool does, and both of its inputs are
+# attacker-controlled in the email-attachment threat model: page *count*
+# is unbounded in the format, and so is page *size* (a PDF may declare a
+# MediaBox of 200x200 inches, which at 300 dpi is a 3.6-gigapixel bitmap).
+# Without caps, a small crafted PDF exhausts memory long before any of the
+# zip/nesting guards get a say.
+MAX_OCR_PDF_PAGES = 200
+# Pillow's own decompression-bomb ceiling, applied to both PDF page
+# renders and image attachments. Pillow warns at its default
+# (~179 megapixels) and errors at twice that; this pins an explicit,
+# smaller limit so behaviour does not drift with the installed version.
+# 80 MP still comfortably covers an A4 page at 600 dpi (~35 MP).
+MAX_OCR_IMAGE_PIXELS = 80_000_000
+
+# Per-email attachment caps. A single .eml is free to declare thousands of
+# attachments; each one is written to disk and recursively converted.
+MAX_EMAIL_ATTACHMENTS = 100
+MAX_EMAIL_ATTACHMENT_TOTAL_BYTES = 300 * 1024 * 1024  # 300 MB
 
 SUPPORTED_TYPES = [
     ("All supported files",

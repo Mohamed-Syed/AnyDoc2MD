@@ -35,9 +35,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            name: linux-x86_64
+            name: linux-x64
           - os: macos-latest
             name: macos-arm64
+
+    env:
+      # Matches the existing Windows release-asset convention
+      # (AnyDoc2MD-v1.1.0-windows-x64.zip): AnyDoc2MD-<tag>-<platform>.
+      # ref_name is the tag on a version-tag push (what matters for
+      # release assets) and the branch name otherwise (workflow_dispatch /
+      # packaging-branch pushes, which never reach the release job).
+      PKG_NAME: AnyDoc2MD-${{ github.ref_name }}-${{ matrix.name }}
 
     steps:
       - uses: actions/checkout@v7
@@ -105,32 +113,39 @@ jobs:
 
       - name: Package the Linux bundle
         if: runner.os == 'Linux'
-        run: |
-          tar -czf "AnyDoc2MD-${{ matrix.name }}.tar.gz" -C dist AnyDoc2MD
+        run: tar -czf "${PKG_NAME}.tar.gz" -C dist AnyDoc2MD
 
       - name: Package the macOS bundle
         if: runner.os == 'macOS'
-        run: |
-          # ditto preserves macOS bundle metadata that plain zip drops.
-          ditto -c -k --keepParent "dist/AnyDoc2MD.app" "AnyDoc2MD-${{ matrix.name }}.zip"
+        # ditto preserves macOS bundle metadata that plain zip drops.
+        run: ditto -c -k --keepParent "dist/AnyDoc2MD.app" "${PKG_NAME}.zip"
 
       - name: Checksum the package
         # shasum -a 256 (not sha256sum) is the one hashing tool present by
-        # default on both Linux and macOS runners.
+        # default on both Linux and macOS runners. Only one of the two
+        # files exists per OS -- an `if`, not `[ -f ] && ...`, because the
+        # latter leaves the *loop's* exit status as whatever the last
+        # iteration's test returned, which happened to be 0 on macOS
+        # (.zip checked last, and it exists there) but 1 on Linux (.zip
+        # checked last, and it does NOT exist there) -- failing the step
+        # on one OS and not the other for no reason connected to the
+        # actual checksums.
         run: |
-          for f in AnyDoc2MD-${{ matrix.name }}.tar.gz AnyDoc2MD-${{ matrix.name }}.zip; do
-            [ -f "$f" ] && shasum -a 256 "$f" > "$f.sha256"
+          for f in "${PKG_NAME}.tar.gz" "${PKG_NAME}.zip"; do
+            if [ -f "$f" ]; then
+              shasum -a 256 "$f" > "$f.sha256"
+            fi
           done
 
       - name: Upload the package
         uses: actions/upload-artifact@v4
         with:
-          name: AnyDoc2MD-${{ matrix.name }}
+          name: ${{ env.PKG_NAME }}
           path: |
-            AnyDoc2MD-${{ matrix.name }}.tar.gz
-            AnyDoc2MD-${{ matrix.name }}.tar.gz.sha256
-            AnyDoc2MD-${{ matrix.name }}.zip
-            AnyDoc2MD-${{ matrix.name }}.zip.sha256
+            ${{ env.PKG_NAME }}.tar.gz
+            ${{ env.PKG_NAME }}.tar.gz.sha256
+            ${{ env.PKG_NAME }}.zip
+            ${{ env.PKG_NAME }}.zip.sha256
           if-no-files-found: error
           retention-days: 14
 

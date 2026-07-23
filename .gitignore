@@ -27,8 +27,7 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
-# Secrets and local environment. Nothing in this project needs an API key
-# today, but an accidentally-created .env must never be publishable.
+# Credentials and local environment
 .env
 .env.*
 !.env.example
@@ -36,21 +35,11 @@ desktop.ini
 *.key
 *.pfx
 
-# Local-only agent/editor config and notes. CLAUDE.md is tracked and
-# public; CLAUDE.local.md and settings.local.json hold machine-specific
-# paths, personal identities, and preferences that must not be published.
-CLAUDE.local.md
+# Local-only files, by convention
 *.local.md
-.claude/settings.local.json
+*.local.json
+.claude/
 
-# Third-party binaries staged for the standalone .exe build. Not source
-# code, and Tesseract/Poppler together are ~150MB -- regenerate locally
-# with scripts/prepare_vendor.py rather than committing binaries to git.
+# Third-party binaries staged for the standalone .exe build. Regenerate
+# with scripts/prepare_vendor.py -- see README's Standalone build section.
 vendor/
-
-# Local dev journal only -- references real files/names used during
-# development and testing; never publish.
-SESSION_SUMMARY.md
-
-# Claude Code settings are per-machine preferences, not project config.
-.claude/settings.json

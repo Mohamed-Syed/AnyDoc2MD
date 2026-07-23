@@ -5,10 +5,11 @@ AnyDoc2MD's **own source code** is licensed under the MIT License (see
 
 This file records the third-party components the project depends on, and
 — importantly — the licensing consequences of **redistributing the
-standalone `.exe`**, which bundles those components. Running from source
-after `pip install -r requirements.txt` is unaffected by everything in
-the "Standalone build" section: installing dependencies for your own use
-is not distribution and triggers no obligations.
+standalone build** (Windows `.exe`, Linux binary, or macOS `.app`), each
+of which bundles those components. Running from source after
+`pip install -r requirements.txt` is unaffected by everything in the
+"Standalone build" section: installing dependencies for your own use is
+not distribution and triggers no obligations.
 
 ---
 
@@ -25,7 +26,7 @@ binary.
 | [`extract-msg`](https://github.com/TeamMsgExtractor/msg-extractor) | **GPL-3.0** | [`licenses/EXTRACT-MSG-LICENSE-GPL-3.0.txt`](licenses/EXTRACT-MSG-LICENSE-GPL-3.0.txt) | `import`ed into the same Python process (`anydoc2md/email_convert.py`) to parse Outlook `.msg` files |
 | [`pcodedmp`](https://github.com/bontchev/pcodedmp) | **GPL-3.0** | [`licenses/PCODEDMP-LICENSE-GPL-3.0.txt`](licenses/PCODEDMP-LICENSE-GPL-3.0.txt) | Transitive: `extract-msg` → `RTFDE` → `oletools` → `pcodedmp` |
 | [`RTFDE`](https://github.com/seamustuohy/RTFDE) | LGPL-3.0 | [`licenses/RTFDE-LICENSE-LGPL-3.0.txt`](licenses/RTFDE-LICENSE-LGPL-3.0.txt) | Transitive dependency of `extract-msg` |
-| [Poppler](https://poppler.freedesktop.org/) | GPL-2.0-or-later | [`licenses/POPPLER-LICENSE-GPL-2.0.txt`](licenses/POPPLER-LICENSE-GPL-2.0.txt) | Separate `pdftoppm.exe` / `pdftocairo.exe` processes invoked by `pdf2image` — aggregation, not linking, but redistributed in the same archive |
+| [Poppler](https://poppler.freedesktop.org/) | GPL-2.0-or-later | [`licenses/POPPLER-LICENSE-GPL-2.0.txt`](licenses/POPPLER-LICENSE-GPL-2.0.txt) | Separate `pdftoppm` / `pdftocairo` processes invoked by `pdf2image` — aggregation, not linking, but redistributed in the same archive |
 
 Every license text above ships **inside** the standalone build (in
 `_internal/licenses/`), alongside AnyDoc2MD's own `LICENSE` and this
@@ -41,13 +42,19 @@ release version, together with the build scripts
 (`anydoc2md.spec`, `scripts/prepare_vendor.py`) needed to reproduce it.
 
 Source for the bundled third-party binaries is available from each
-project at the links above. Poppler's Windows build is produced by the
+project at the links above, or from the OS package that provided the
+binary for a given platform's build: Poppler's Windows build is produced
+by the
 [`oschwartz10612/poppler-windows`](https://github.com/oschwartz10612/poppler-windows)
-project; the Tesseract Windows build by
-[UB-Mannheim](https://github.com/UB-Mannheim/tesseract). Neither is
-modified by this project. On request, the maintainer will provide the
-corresponding source for the exact bundled versions for at least three
-years from the date of distribution, per GPL-2.0 §3(b).
+project, the Tesseract Windows build by
+[UB-Mannheim](https://github.com/UB-Mannheim/tesseract); the Linux build
+uses Ubuntu's `tesseract-ocr`/`poppler-utils` `apt` packages (source via
+`apt-get source` or Debian's package archive); the macOS build uses the
+`tesseract`/`poppler` Homebrew formulae (source via `brew info --json`'s
+recorded `url`, or the formula itself). None are modified by this
+project. On request, the maintainer will provide the corresponding
+source for the exact bundled versions for at least three years from the
+date of distribution, per GPL-2.0 §3(b).
 
 ### Avoiding the copyleft obligation
 
@@ -64,33 +71,48 @@ in the dependency tree is permissively licensed.
 The standalone build bundles compiled binaries from two projects,
 trimmed to only the files actually needed at runtime (see
 `anydoc2md.spec` and `scripts/prepare_vendor.py` for exactly what is
-included).
+included, per platform). Neither Tesseract nor Poppler is modified by
+this project on any platform.
+
+The exact version bundled depends on what the OS package manager
+resolves at build time — pinned to a specific winget package on Windows,
+but "whatever `apt`/Homebrew currently serve" on Linux/macOS, so it can
+differ release to release and platform to platform. Run
+`AnyDoc2MD/_internal/vendor/tesseract/tesseract --version` (or the
+platform-equivalent path inside a downloaded build) to see the exact
+version in a given release; it is not restated here to avoid this file
+going stale the moment either package updates upstream.
 
 ### Tesseract OCR
 
 - Project: <https://github.com/tesseract-ocr/tesseract>
-- Version bundled: 5.4.0 (Windows build via the `UB-Mannheim.TesseractOCR`
-  winget package)
+- Source of the bundled binary:
+  - Windows: the `UB-Mannheim.TesseractOCR` winget package
+  - Linux: Ubuntu's `tesseract-ocr` + `tesseract-ocr-eng` + `tesseract-ocr-osd` `apt` packages
+  - macOS: the `tesseract` Homebrew formula
 - License: Apache License 2.0 — full text in
   [`licenses/TESSERACT-LICENSE-Apache-2.0.txt`](licenses/TESSERACT-LICENSE-Apache-2.0.txt)
 
-Only `tesseract.exe`, its runtime DLL dependencies (verified via PE
-import-table analysis, not guesswork), and the English (`eng`) +
+Only the `tesseract` binary, its runtime library dependencies (verified
+via PE import-table analysis on Windows, `ldd` on Linux, `dylibbundler` on
+macOS — not guesswork), and the English (`eng`) +
 orientation/script-detection (`osd`) trained-data files are bundled.
 Tesseract's training tools, other language packs, and documentation are
-not included. Tesseract is unmodified.
+not included.
 
 ### Poppler
 
 - Project: <https://poppler.freedesktop.org/>
-- Version bundled: 25.07.0 (Windows build via the
-  `oschwartz10612.Poppler` winget package)
+- Source of the bundled binary:
+  - Windows: the `oschwartz10612.Poppler` winget package
+  - Linux: Ubuntu's `poppler-utils` `apt` package
+  - macOS: the `poppler` Homebrew formula
 - License: GNU General Public License, version 2 or later — full text in
   [`licenses/POPPLER-LICENSE-GPL-2.0.txt`](licenses/POPPLER-LICENSE-GPL-2.0.txt)
 
-Only `pdftoppm.exe`, `pdftocairo.exe` (the two tools `pdf2image` actually
-invokes), and their verified runtime DLL dependencies are bundled.
-Poppler is unmodified; see the written offer above for source.
+Only `pdftoppm`, `pdftocairo` (the two tools `pdf2image` actually
+invokes), and their verified runtime library dependencies are bundled;
+see the written offer above for source.
 
 ---
 
@@ -113,7 +135,7 @@ as declared on PyPI.
 To regenerate a complete, verified list of every transitive dependency
 and its license for a given build:
 
-```powershell
+```bash
 pip install pip-licenses
 pip-licenses --format=markdown --with-urls --with-license-file
 ```

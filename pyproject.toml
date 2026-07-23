@@ -15,10 +15,11 @@ authors = [{ name = "Syed Mohamed" }]
 keywords = ["markdown", "pdf", "ocr", "email", "eml", "msg", "markitdown", "llm"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "Environment :: Win32 (MS Windows)",
     "Intended Audience :: End Users/Desktop",
     "Natural Language :: English",
     "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Topic :: Text Processing :: Markup :: Markdown",
     "Topic :: Utilities",

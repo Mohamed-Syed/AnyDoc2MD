@@ -41,42 +41,80 @@ of an ongoing effort to grow my technical capabilities alongside AI tools.
 ## Installation
 
 **Option A: standalone build (recommended for most users).** Download the
-prebuilt `AnyDoc2MD` folder from [Releases](../../releases), unzip it, and
-run `AnyDoc2MD.exe` inside. Nothing else to install — Tesseract OCR and
-Poppler are bundled in (see [Standalone build](#standalone-build) below
-for what exactly is bundled and why it's a large download).
+package for your platform from [Releases](../../releases) — nothing else
+to install; Tesseract OCR and Poppler are bundled in (see
+[Standalone build](#standalone-build) below for what exactly is bundled
+and why it's a large download).
+
+| Platform | Download | Run |
+|---|---|---|
+| Windows | `AnyDoc2MD-vX.Y.Z-windows-x64.zip` | Unzip, run `AnyDoc2MD.exe` inside |
+| Linux | `AnyDoc2MD-vX.Y.Z-linux-x64.tar.gz` | `tar xzf ...`, run `./AnyDoc2MD/AnyDoc2MD` |
+| macOS | `AnyDoc2MD-vX.Y.Z-macos-arm64.zip` | Unzip, run `AnyDoc2MD.app` (Apple Silicon; see note below for Intel Macs) |
+
+Each archive ships a matching `.sha256` file — verify with
+`shasum -a 256 -c AnyDoc2MD-*.sha256` (Linux/macOS) before running a
+downloaded binary, standard practice for anything fetched over the network.
+
+The macOS build isn't notarized (that requires an Apple Developer Program
+membership this project doesn't have), so Gatekeeper will refuse to open
+it with a plain double-click the first time. Right-click the app →
+**Open** → **Open** in the dialog, or run
+`xattr -d com.apple.quarantine AnyDoc2MD.app` once after unzipping.
 
 **Option B: run from source.**
 
-### 1. System dependencies (Windows)
+### 1. System dependencies
+
+<table>
+<tr><th>Windows</th><td>
 
 ```powershell
 winget install UB-Mannheim.TesseractOCR
 winget install oschwartz10612.Poppler
 ```
 
+</td></tr>
+<tr><th>Linux (Debian/Ubuntu)</th><td>
+
+```bash
+sudo apt install tesseract-ocr tesseract-ocr-eng poppler-utils
+```
+
+</td></tr>
+<tr><th>macOS</th><td>
+
+```bash
+brew install tesseract poppler
+```
+
+</td></tr>
+</table>
+
 - **Tesseract OCR** powers image/scanned-PDF text recognition.
 - **Poppler** renders PDF pages to images for the OCR fallback path.
 
-If either is installed somewhere other than the default winget location,
-update the paths in [`anydoc2md/config.py`](anydoc2md/config.py)
-(`TESSERACT_EXE`, `POPPLER_BIN`).
+On Windows, if either is installed somewhere other than the default
+winget location, update the paths in
+[`anydoc2md/config.py`](anydoc2md/config.py) (`TESSERACT_EXE`,
+`POPPLER_BIN`). On Linux/macOS both are resolved from `PATH`, so a
+standard package-manager install just works.
 
 ### 2. Python dependencies
 
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-```powershell
+```bash
 python -m anydoc2md
 ```
 
-or double-click `run_anydoc2md.bat` for a no-console launch (source
-install only — the standalone build's own `AnyDoc2MD.exe` needs no
-launcher).
+or, on Windows, double-click `run_anydoc2md.bat` for a no-console launch
+(source install only — the standalone builds need no launcher on any
+platform).
 
 1. **Add Files...** or **Add Folder...** to queue up documents.
 2. Optionally choose an output folder (defaults to saving each `.md` next
@@ -87,9 +125,9 @@ launcher).
 
 ## Standalone build
 
-`anydoc2md.spec` builds a self-contained `.exe` (via PyInstaller) that
-needs nothing installed on the target machine — not even Python. It
-bundles:
+`anydoc2md.spec` builds a self-contained bundle (via PyInstaller) that
+needs nothing installed on the target machine — not even Python — for
+Windows, Linux, and macOS. It bundles:
 
 - The full Python runtime and all pip dependencies (~250-300 MB, driven
   mostly by `onnxruntime`, which is kept because MarkItDown uses it for
@@ -97,32 +135,48 @@ bundles:
   substantially but make extension-less and mislabelled files fall back
   to guesswork).
 - A **trimmed** copy of Tesseract OCR (~130 MB) and Poppler (~21 MB) —
-  only the exact binaries and DLLs verified (via PE import-table
-  analysis, not guesswork) to be needed at runtime; training tools, other
-  language packs, and unrelated CLI utilities are left out. See
-  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for exactly what's
-  included and under what license (Tesseract: Apache 2.0, Poppler: GPL).
+  only the exact binaries verified to be needed at runtime, plus their own
+  shared-library dependencies (found via PE import-table analysis on
+  Windows, `ldd` on Linux, `dylibbundler` on macOS — never guesswork);
+  training tools, other language packs, and unrelated CLI utilities are
+  left out. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for
+  exactly what's included and under what license (Tesseract: Apache 2.0,
+  Poppler: GPL).
 
 Total build size lands around 400-450 MB. That's the honest cost of
 "works on a fresh machine with zero setup" — Tesseract's own OCR engine
-(`libtesseract-5.dll`) alone is over 100 MB and can't be shrunk further
-without recompiling Tesseract from source.
+alone is over 100 MB and can't be shrunk further without recompiling
+Tesseract from source.
+
+**PyInstaller cannot cross-compile**: a Windows build only comes from
+running on Windows, and likewise for Linux/macOS. The Linux and macOS
+builds in [Releases](../../releases) are produced by
+[`.github/workflows/build-packages.yml`](.github/workflows/build-packages.yml)
+on GitHub's own `ubuntu-latest`/`macos-latest` runners — the only way to
+get a build that is actually tested on its target OS without owning one
+of each. That workflow also runs the resulting binaries (with only the
+bundled libraries on the loader path) as a smoke test before packaging,
+so a release build that doesn't actually run never gets attached to a
+release. The Windows build is still produced locally, below.
 
 To build it yourself:
 
-```powershell
+```bash
 pip install -r requirements.txt
 pip install pyinstaller
 python scripts/prepare_vendor.py    # stages a trimmed Tesseract+Poppler into vendor/
-                                     # (requires the winget installs from Option B, step 1)
+                                     # (requires the system deps from Option B, step 1;
+                                     # on macOS, also: brew install dylibbundler)
 pyinstaller anydoc2md.spec --clean --noconfirm
 ```
 
-The result is in `dist/AnyDoc2MD/`. It's built `--onedir` (not
-`--onefile`): onefile re-extracts its entire payload to a temp folder on
-*every* launch, which is a real, repeated performance cost at this size;
-onedir launches instantly since nothing needs unpacking. Zip the whole
-`dist/AnyDoc2MD/` folder for distribution.
+The result is in `dist/AnyDoc2MD/` (`dist/AnyDoc2MD.app` on macOS). It's
+built `--onedir` (not `--onefile`): onefile re-extracts its entire
+payload to a temp folder on *every* launch, which is a real, repeated
+performance cost at this size; onedir launches instantly since nothing
+needs unpacking. Archive the whole folder/`.app` for distribution — `zip`
+loses macOS bundle metadata, so use `ditto -c -k --keepParent` there
+instead (see the CI workflow for the exact invocation).
 
 UPX compression was deliberately not used — it can trigger antivirus
 false positives (packing is also a common malware technique), a bad

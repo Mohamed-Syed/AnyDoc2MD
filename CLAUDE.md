@@ -58,6 +58,29 @@ Repo: https://github.com/Mohamed-Syed/AnyDoc2MD (public, MIT).
   traversal, and argument injection (see README's Security section and
   `anydoc2md/safety.py`) before considering it done.
 
+## Standing authorization
+
+The user has said repeatedly that per-action confirmation on routine,
+already-established work is unwanted friction. For this project, proceed
+without asking first on:
+
+- Committing and pushing to this repo (git identity is already handled —
+  see above)
+- Building/rebuilding the standalone `.exe`, renaming or refactoring
+  files, installing project dependencies
+- Routine dev work: creating/deleting scratch or test files, running
+  tests, adding new source files
+
+Still pause and ask before:
+
+- Force-push, rewriting already-pushed history, deleting a branch or tag
+- Anything that touches a *new* external service/account (creating
+  another repo, changing this repo's visibility, adding a new
+  integration/connector)
+- Removing or weakening an existing security control (the zip-bomb
+  guard, the email-nesting depth cap, etc.)
+- Anything where the outcome or blast radius is genuinely unclear
+
 ## Quick start for a fresh session
 
 ```powershell

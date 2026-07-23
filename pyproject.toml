@@ -1,0 +1,70 @@
+[build-system]
+# >=77 for PEP 639 `license`/`license-files` support.
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anydoc2md"
+version = "1.1.0"
+description = "Convert PDFs, Office documents, images, and emails into clean, AI-ready Markdown."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Syed Mohamed" }]
+keywords = ["markdown", "pdf", "ocr", "email", "eml", "msg", "markitdown", "llm"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "markitdown[pdf,docx,pptx,xlsx]>=0.1.6",
+    "xlrd>=2.0.2",
+    "pytesseract>=0.3.13",
+    "pdf2image>=1.17.0",
+    "Pillow>=12.3.0",
+    "extract-msg>=0.56.0",
+    "beautifulsoup4>=4.15.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+build = ["pyinstaller>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/Mohamed-Syed/AnyDoc2MD"
+Repository = "https://github.com/Mohamed-Syed/AnyDoc2MD"
+Issues = "https://github.com/Mohamed-Syed/AnyDoc2MD/issues"
+Changelog = "https://github.com/Mohamed-Syed/AnyDoc2MD/blob/master/CHANGELOG.md"
+
+[project.gui-scripts]
+anydoc2md = "anydoc2md.__main__:main"
+
+[tool.setuptools]
+# Explicit, so tests/ and scripts/ are never packaged into a distribution.
+packages = ["anydoc2md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "S"]
+# S101: pytest relies on bare `assert`.
+# S110/S112: several `except: pass` blocks are deliberate and commented --
+#   a missing icon, an unavailable ttk theme, or an undecodable attachment
+#   must never abort a batch conversion.
+ignore = ["E501", "S101", "S110", "S112"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B"]

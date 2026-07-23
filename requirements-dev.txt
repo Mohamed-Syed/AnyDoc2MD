@@ -1,0 +1,6 @@
+# Development and CI dependencies. Runtime dependencies live in
+# requirements.txt; nothing here ships in the standalone .exe.
+-r requirements.txt
+
+pytest>=8.0
+ruff>=0.6

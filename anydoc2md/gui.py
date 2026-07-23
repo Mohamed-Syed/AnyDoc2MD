@@ -9,6 +9,7 @@ from tkinter import filedialog, ttk, messagebox, scrolledtext
 from . import __version__
 from .config import SUPPORTED_TYPES, FOLDER_SCAN_EXTENSIONS
 from .converter import convert_one
+from .text_utils import describe_exception
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
@@ -251,7 +252,12 @@ class AnyDoc2MDApp:
 
     def _open_output_folder(self):
         if self._last_output_folder and os.path.isdir(self._last_output_folder):
-            os.startfile(self._last_output_folder)
+            # noqa justification: the argument is a directory this app just
+            # wrote to -- either one the user picked in a folder dialog or
+            # the source file's own parent. It is never derived from
+            # document content, and startfile on a verified directory opens
+            # Explorer, not an arbitrary executable.
+            os.startfile(self._last_output_folder)  # noqa: S606
 
     def start_conversion(self):
         if not self.files:
@@ -327,8 +333,15 @@ class AnyDoc2MDApp:
                     self.root.after(0, self._on_file_done, src_path, True, method, out_path)
                 except Exception as e:
                     fail_count += 1
+                    # The full traceback goes to stderr for debugging (a
+                    # no-op in the windowed .exe build, which has no
+                    # console); the GUI log gets a redacted one-liner,
+                    # since users routinely paste that log into bug
+                    # reports and it must not carry local paths.
                     traceback.print_exc()
-                    self.root.after(0, self._on_file_done, src_path, False, str(e), None)
+                    self.root.after(
+                        0, self._on_file_done, src_path, False, describe_exception(e), None
+                    )
                 self.root.after(0, self.progress.configure, {"value": completed})
                 self.root.after(0, self.status_var.set, f"Converting... {completed}/{total}")
 

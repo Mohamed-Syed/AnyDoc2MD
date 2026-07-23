@@ -1,0 +1,27 @@
+# Normalize line endings so contributors on different platforms don't
+# produce whole-file diffs. Text is stored LF in the repository.
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF -- cmd.exe misparses LF-only .bat.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets: never diffed, never line-ending-converted.
+*.png binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.exe binary
+*.dll binary
+*.traineddata binary
+
+# Keep repository plumbing out of GitHub's language statistics and out of
+# source archives generated for releases.
+licenses/** linguist-vendored
+tests/** linguist-detectable
+.github/ export-ignore
+tests/ export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+CLAUDE.md export-ignore

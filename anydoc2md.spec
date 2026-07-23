@@ -5,10 +5,7 @@
 #
 # Build with: pyinstaller anydoc2md.spec --clean --noconfirm
 
-import os
 from PyInstaller.utils.hooks import collect_data_files
-
-block_cipher = None
 
 # magika (markitdown's ML-based file-type sniffer) ships its ONNX model
 # and config as package data, not Python code -- PyInstaller's import

@@ -1,0 +1,49 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "build": true,
+      "dist": true,
+      "vendor": true
+    },
+    "search.exclude": {
+      "build": true,
+      "dist": true,
+      "vendor": true,
+      "**/__pycache__": true
+    },
+    "files.watcherExclude": {
+      "**/vendor/**": true,
+      "**/dist/**": true,
+      "**/build/**": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+      "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "[python]": {
+      "editor.rulers": [
+        100
+      ]
+    },
+    "files.associations": {
+      "*.spec": "python"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "anthropic.claude-code",
+      "ms-python.python",
+      "charliermarsh.ruff"
+    ]
+  }
+}

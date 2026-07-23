@@ -14,10 +14,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    # Belt-and-suspenders alongside prepare_vendor.py's own subprocess
+    # timeout: caps total CI minutes burned if any step hangs.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

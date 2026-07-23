@@ -20,12 +20,17 @@ under the **GPL v3**, and its source must be made available. AnyDoc2MD's
 own code remains MIT and can be reused under MIT independently of the
 binary.
 
-| Component | License | How it is combined |
-|---|---|---|
-| [`extract-msg`](https://github.com/TeamMsgExtractor/msg-extractor) | **GPL-3.0** | `import`ed into the same Python process (`anydoc2md/email_convert.py`) to parse Outlook `.msg` files |
-| [`pcodedmp`](https://github.com/bontchev/pcodedmp) | **GPL-2.0** | Transitive: `extract-msg` → `RTFDE` → `oletools` → `pcodedmp` |
-| [`RTFDE`](https://github.com/seamustuohy/RTFDE) | LGPL-3.0 | Transitive dependency of `extract-msg` |
-| [Poppler](https://poppler.freedesktop.org/) | GPL-2.0-or-later | Separate `pdftoppm.exe` / `pdftocairo.exe` processes invoked by `pdf2image` — aggregation, not linking, but redistributed in the same archive |
+| Component | License | Full text | How it is combined |
+|---|---|---|---|
+| [`extract-msg`](https://github.com/TeamMsgExtractor/msg-extractor) | **GPL-3.0** | [`licenses/EXTRACT-MSG-LICENSE-GPL-3.0.txt`](licenses/EXTRACT-MSG-LICENSE-GPL-3.0.txt) | `import`ed into the same Python process (`anydoc2md/email_convert.py`) to parse Outlook `.msg` files |
+| [`pcodedmp`](https://github.com/bontchev/pcodedmp) | **GPL-3.0** | [`licenses/PCODEDMP-LICENSE-GPL-3.0.txt`](licenses/PCODEDMP-LICENSE-GPL-3.0.txt) | Transitive: `extract-msg` → `RTFDE` → `oletools` → `pcodedmp` |
+| [`RTFDE`](https://github.com/seamustuohy/RTFDE) | LGPL-3.0 | [`licenses/RTFDE-LICENSE-LGPL-3.0.txt`](licenses/RTFDE-LICENSE-LGPL-3.0.txt) | Transitive dependency of `extract-msg` |
+| [Poppler](https://poppler.freedesktop.org/) | GPL-2.0-or-later | [`licenses/POPPLER-LICENSE-GPL-2.0.txt`](licenses/POPPLER-LICENSE-GPL-2.0.txt) | Separate `pdftoppm.exe` / `pdftocairo.exe` processes invoked by `pdf2image` — aggregation, not linking, but redistributed in the same archive |
+
+Every license text above ships **inside** the standalone build (in
+`_internal/licenses/`), alongside AnyDoc2MD's own `LICENSE` and this
+notices file, so a downloaded binary carries its licenses with it as the
+GPL requires — not only the repository does.
 
 ### Written offer for source code
 

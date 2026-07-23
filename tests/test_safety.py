@@ -1,4 +1,5 @@
 import io
+import os
 import zipfile
 
 import pytest
@@ -88,32 +89,58 @@ class TestDecompressionBombs:
 
 
 class TestMemorySafety:
-    def test_does_not_read_the_whole_archive_into_memory(self, tmp_path, monkeypatch):
+    def test_bytes_read_do_not_scale_with_archive_size(self, tmp_path, monkeypatch):
         """The guard must inspect metadata, not buffer the untrusted file.
 
         Regression test: an earlier version called ``f.read()`` on the whole
         archive before any size check ran, so a multi-gigabyte input
         exhausted memory *before* the decompression-bomb guard could fire.
+
+        This asserts the property that actually matters -- total bytes read
+        stays flat as the archive grows -- rather than looking for a
+        particular ``read()`` call shape.
+
+        An earlier version of this test flagged any ``read(-1)`` as a slurp,
+        which failed on Python 3.11 only: its ``zipfile._EndRecData`` seeks
+        to the last 22 bytes and then calls ``fpin.read()`` with no size, so
+        the call *looks* unbounded while returning 22 bytes (3.12+ passes an
+        explicit size). Measured both ways, the guard reads 96 bytes from an
+        8 MB archive on 3.11 and on 3.14 alike -- the call shape is a stdlib
+        implementation detail, and this test should not care about it.
         """
-        path = write_zip(tmp_path / "ok.zip", [("a.txt", b"hello")])
+        # Incompressible payload, so the archive on disk really is ~8 MB and
+        # a naive whole-file read would show up plainly in the byte count.
+        payload = os.urandom(8 * 1024 * 1024)
+        path = write_zip(tmp_path / "big.zip", [("blob.bin", payload)])
+        archive_size = os.path.getsize(path)
+        assert archive_size > 4 * 1024 * 1024, "payload compressed unexpectedly well"
 
-        real_open = io.open
-        slurped = []
+        real_io_open = io.open
+        bytes_read = []
 
-        def watching_open(file, mode="r", *args, **kwargs):
-            handle = real_open(file, mode, *args, **kwargs)
+        def counting_open(file, mode="r", *args, **kwargs):
+            handle = real_io_open(file, mode, *args, **kwargs)
             if str(file) == str(path) and "b" in mode:
                 original_read = handle.read
 
                 def read(size=-1):
-                    if size == -1:
-                        slurped.append(True)
-                    return original_read(size)
+                    data = original_read(size)
+                    bytes_read.append(len(data))
+                    return data
 
                 handle.read = read
             return handle
 
-        monkeypatch.setattr(io, "open", watching_open)
-        monkeypatch.setattr("builtins.open", watching_open)
+        # zipfile calls io.open; patch builtins.open too in case that changes.
+        monkeypatch.setattr(io, "open", counting_open)
+        monkeypatch.setattr("builtins.open", counting_open)
         assert_zip_is_safe(path)
-        assert not slurped, "assert_zip_is_safe slurped the entire archive"
+
+        total = sum(bytes_read)
+        # Locating the EOCD costs at most ZIP_MAX_COMMENT (64 KB) and the
+        # central directory for one entry is tiny. 1 MB is a generous
+        # ceiling that still fails loudly on an 8 MB whole-file read.
+        assert total < 1024 * 1024, (
+            f"read {total:,} bytes from a {archive_size:,}-byte archive; "
+            f"the guard should read only metadata"
+        )

@@ -24,7 +24,11 @@ jobs:
         # filename-sanitizing and path-redaction logic is deliberately
         # platform-independent and regressions there are easy to miss.
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.11", "3.13"]
+        # 3.10 is the floor declared in pyproject.toml (set by markitdown
+        # and Pillow) and must actually be tested, not just claimed. 3.11 is
+        # kept because stdlib behaviour genuinely differs there -- it caught
+        # a test that asserted on a zipfile implementation detail.
+        python-version: ["3.10", "3.11", "3.13"]
 
     steps:
       - uses: actions/checkout@v4

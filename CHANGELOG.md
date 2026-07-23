@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Linux and macOS standalone builds**, alongside the existing Windows
+  `.exe`. Each bundles a trimmed Tesseract OCR + Poppler for its own
+  platform (Linux: apt's `tesseract-ocr`/`poppler-utils`; macOS:
+  Homebrew's `tesseract`/`poppler`) and needs nothing else installed —
+  same zero-setup experience as the Windows build. Built and verified on
+  GitHub's own `ubuntu-latest`/`macos-latest` runners
+  (`.github/workflows/build-packages.yml`), since PyInstaller can't
+  cross-compile; each build is smoke-tested by actually running the
+  bundled binaries with only the vendored libraries on the loader path
+  before it's packaged. On a version-tag push, both are attached (with
+  SHA-256 checksums) to a draft GitHub Release for review before
+  publishing.
+- Running from source now works on Linux/macOS too: `config.py` resolves
+  Tesseract/Poppler via `PATH` there (vs. the winget-location fallback on
+  Windows), so a normal `apt`/`brew` install is all that's needed.
+
+### Changed
+
+- The GUI's window icon and "open output folder" action now have
+  Linux/macOS equivalents (`iconphoto`/`xdg-open`/`open`) instead of the
+  previously Windows-only `iconbitmap`/`os.startfile`.
+
 ### Security
 
 - **The GUI log no longer leaks local filesystem paths on success.** Every

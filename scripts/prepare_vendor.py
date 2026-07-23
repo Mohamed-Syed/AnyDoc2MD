@@ -179,6 +179,25 @@ def _stage_linux(name, binaries, dst_dir):
           f"{total / 1024 / 1024:.1f} MB -> {dst_dir}")
 
 
+def _homebrew_lib_search_paths():
+    """Directories dylibbundler should search, beyond its own defaults.
+
+    ``brew --prefix`` differs between Intel (/usr/local) and Apple
+    Silicon (/opt/homebrew) Homebrew installs; asking it directly (rather
+    than hardcoding one) keeps this working on either.
+    """
+    paths = []
+    try:
+        prefix = subprocess.run(
+            ["brew", "--prefix"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        if prefix:
+            paths.append(os.path.join(prefix, "lib"))
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    return paths
+
+
 def _stage_macos(name, binaries, dst_dir):
     """Copy binaries, then let dylibbundler gather and relocate their dylibs.
 
@@ -201,12 +220,29 @@ def _stage_macos(name, binaries, dst_dir):
 
     libs_dir = os.path.join(dst_dir, "libs")
     cmd = ["dylibbundler", "-of", "-cd", "-b", "-d", libs_dir, "-p", "@executable_path/libs/"]
+    # An explicit Homebrew lib search path so dylibbundler resolves every
+    # dependency itself rather than falling through to its interactive
+    # "where is this library?" prompt -- which has a known bug (upstream
+    # DylibBundler.cpp's getUserInputDirForFile() reads with `std::cin >>`
+    # and never checks eof()/fail(), so on a closed stdin it spins forever
+    # instead of erroring). The explicit search path is the real fix; the
+    # timeout below is the safety net in case some dependency still isn't
+    # found some other way.
+    for p in _homebrew_lib_search_paths():
+        cmd += ["-s", p]
     for s in staged:
         cmd += ["-x", s]
-    # stdin=DEVNULL: dylibbundler prompts interactively for any dependency
-    # it can't locate; in CI that would hang. Feeding EOF makes it fail
-    # fast and surface the missing library instead.
-    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)
+    try:
+        subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL, timeout=180)
+    except subprocess.TimeoutExpired:
+        sys.exit(
+            "ERROR: dylibbundler did not finish within 180s -- it is almost "
+            "certainly stuck on its interactive prompt for a dylib it "
+            "couldn't resolve (a known upstream bug: it never checks for "
+            "EOF on a closed stdin). Run `dylibbundler` on this binary "
+            "interactively to see which library it's asking about, then "
+            "add that library's directory to _homebrew_lib_search_paths()."
+        )
 
     n_libs = len(os.listdir(libs_dir)) if os.path.isdir(libs_dir) else 0
     print(f"{name}: staged {len(staged)} binaries + {n_libs} libraries (dylibbundler) -> {dst_dir}")

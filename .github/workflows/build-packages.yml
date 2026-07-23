@@ -2,9 +2,14 @@ name: Build standalone packages
 
 # Builds the self-contained Linux and macOS bundles on their native
 # runners (PyInstaller cannot cross-compile). The Windows bundle is built
-# by the maintainer locally from the winget-installed toolchain. Runs on
-# demand, on version tags, and on pushes to the packaging branch while it
-# is being iterated on.
+# by the maintainer locally from the winget-installed toolchain and added
+# to the release by hand, same as before this workflow existed.
+#
+# On a `vX.Y.Z` tag push, the built packages (plus SHA-256 checksums) are
+# attached to a *draft* GitHub Release -- never published automatically,
+# so there's always a review step before anything goes out. Also runs on
+# demand and on pushes to the packaging branch while it's being iterated
+# on; those runs stop at the build+verify stage and touch no release.
 on:
   workflow_dispatch:
   push:
@@ -109,12 +114,53 @@ jobs:
           # ditto preserves macOS bundle metadata that plain zip drops.
           ditto -c -k --keepParent "dist/AnyDoc2MD.app" "AnyDoc2MD-${{ matrix.name }}.zip"
 
+      - name: Checksum the package
+        # shasum -a 256 (not sha256sum) is the one hashing tool present by
+        # default on both Linux and macOS runners.
+        run: |
+          for f in AnyDoc2MD-${{ matrix.name }}.tar.gz AnyDoc2MD-${{ matrix.name }}.zip; do
+            [ -f "$f" ] && shasum -a 256 "$f" > "$f.sha256"
+          done
+
       - name: Upload the package
         uses: actions/upload-artifact@v4
         with:
           name: AnyDoc2MD-${{ matrix.name }}
           path: |
             AnyDoc2MD-${{ matrix.name }}.tar.gz
+            AnyDoc2MD-${{ matrix.name }}.tar.gz.sha256
             AnyDoc2MD-${{ matrix.name }}.zip
+            AnyDoc2MD-${{ matrix.name }}.zip.sha256
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Attach packages to a draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AnyDoc2MD-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create or update the draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/*
+          body: |
+            _Draft: review before publishing._ Built automatically for
+            Linux and macOS by this repository's `build-packages.yml`
+            workflow, each verified in CI to run against its own bundled
+            Tesseract/Poppler with no system install required. Each
+            archive has a matching `.sha256` checksum file.
+
+            The Windows build is added separately (built locally per
+            [README's Standalone build section](../../README.md#standalone-build)).

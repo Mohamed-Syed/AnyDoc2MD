@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/hero.png" alt="AnyDoc2MD — Convert Any Document to Clean Markdown. Simple. Fast. Private." width="100%">
+</p>
+
 # AnyDoc2MD
 
 **Any document → clean Markdown, ready for humans or AI.**

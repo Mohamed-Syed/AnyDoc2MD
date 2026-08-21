@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from anydoc2md.config import MAX_VIDEO_DOWNLOAD_BYTES
 from anydoc2md.video_download import (
     VideoDownloadError,
     download_metadata_path,
@@ -94,6 +95,7 @@ def test_download_video_output_template_does_not_duplicate_output_dir(tmp_path, 
 
     assert seen_opts["paths"] == {"home": str(tmp_path)}
     assert seen_opts["outtmpl"]["default"] == "%(title).180B [%(id)s].%(ext)s"
+    assert seen_opts["max_filesize"] == MAX_VIDEO_DOWNLOAD_BYTES
 
 
 def test_download_video_can_use_browser_cookies(tmp_path, monkeypatch):

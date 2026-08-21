@@ -335,8 +335,9 @@ endorsed by Microsoft.
 - **URL download support depends on yt-dlp and the source site.** Some sites
   require login cookies, block automated downloads, or change their pages.
   Try **Use browser cookies** for videos that open in your browser but fail in
-  the app. When a URL still cannot be downloaded, download the video manually
-  and add the local MP4/MOV/WebM file.
+  the app. URL downloads are capped at 1 GB before conversion starts. When a
+  URL still cannot be downloaded, download the video manually and add the local
+  MP4/MOV/WebM file.
 - **Video transcription is optional.** Install `faster-whisper` to transcribe
   speech locally. First use may download the selected Whisper model.
 - **The Arabic text-order fix is a targeted heuristic, not a full Unicode

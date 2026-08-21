@@ -140,6 +140,7 @@ MAX_EMAIL_ATTACHMENT_TOTAL_BYTES = 300 * 1024 * 1024  # 300 MB
 # Video conversion caps. Reels and Shorts are normally under a few minutes,
 # but the app accepts untrusted files, so bound expensive transcription and
 # frame OCR work before it starts.
+MAX_VIDEO_DOWNLOAD_BYTES = 1024 * 1024 * 1024  # 1 GB
 MAX_VIDEO_DURATION_SECONDS = 60 * 60
 MAX_VIDEO_KEYFRAMES = 40
 MAX_VIDEO_SCENE_KEYFRAMES = 120

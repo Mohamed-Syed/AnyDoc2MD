@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Live URL batch progress.** URL downloads now update the progress bar and
   status text with the current link number, yt-dlp percentage, and transferred
   size instead of looking frozen until the file finishes.
+- **URL download size cap.** yt-dlp downloads are capped at 1 GB before
+  conversion starts, preventing an unexpectedly large URL from filling disk
+  space during a Markdown-only batch.
 - **Visual context modes for video digests.** The GUI now offers
   `Transcript only`, `Balanced`, and `Scene-by-scene`. Scene-by-scene mode
   writes selected keyframes into a sibling assets folder and links them from

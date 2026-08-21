@@ -2,6 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 
+from .config import MAX_VIDEO_DOWNLOAD_BYTES
 from .text_utils import redact_local_paths
 
 
@@ -101,6 +102,7 @@ def _download_video_once(yt_dlp, url, output_dir, browser, progress_callback):
         "noprogress": True,
         "retries": 3,
         "fragment_retries": 3,
+        "max_filesize": MAX_VIDEO_DOWNLOAD_BYTES,
     }
     if browser:
         ydl_opts["cookiesfrombrowser"] = (browser,)

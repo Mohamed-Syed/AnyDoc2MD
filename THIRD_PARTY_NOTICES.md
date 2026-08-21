@@ -122,6 +122,10 @@ Direct dependencies and their licenses. Each is used unmodified, under
 its own license; transitive dependencies are covered by the same terms
 as declared on PyPI.
 
+AnyDoc2MD uses yt-dlp through its Python package/API. It does not vendor
+yt-dlp's standalone release binaries; those binaries have their own
+licensing notes in the yt-dlp project.
+
 | Package | License |
 |---|---|
 | [`markitdown`](https://github.com/microsoft/markitdown) | MIT |
@@ -130,6 +134,7 @@ as declared on PyPI.
 | [`Pillow`](https://python-pillow.org/) | MIT-CMU |
 | [`pytesseract`](https://github.com/madmaze/pytesseract) | Apache-2.0 |
 | [`xlrd`](https://github.com/python-excel/xlrd) | BSD-3-Clause |
+| [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | Unlicense |
 | [`extract-msg`](https://github.com/TeamMsgExtractor/msg-extractor) | **GPL-3.0** — see above |
 
 To regenerate a complete, verified list of every transitive dependency

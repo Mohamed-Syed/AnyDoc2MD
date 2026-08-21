@@ -3,11 +3,18 @@ import threading
 
 from markitdown import MarkItDown
 
-from .config import IMAGE_EXTENSIONS, EMAIL_EXTENSIONS, ZIP_EXTENSIONS, MIN_TEXT_LENGTH_BEFORE_OCR
+from .config import (
+    IMAGE_EXTENSIONS,
+    EMAIL_EXTENSIONS,
+    ZIP_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+    MIN_TEXT_LENGTH_BEFORE_OCR,
+)
 from .ocr import ocr_image_file, ocr_pdf
 from .arabic import fix_arabic_text_order
 from .email_convert import convert_email
 from .safety import assert_zip_is_safe, UnsafeZipError
+from .video_convert import convert_video
 
 # MarkItDown() is not guaranteed thread-safe to share across worker threads,
 # so each thread in the conversion pool gets its own lazily-built instance
@@ -23,13 +30,13 @@ def _get_markitdown():
     return md
 
 
-def convert_one(src_path, use_ocr, _depth=0):
+def convert_one(src_path, use_ocr, _depth=0, visual_context="balanced", output_assets_dir=None):
     ext = os.path.splitext(src_path)[1].lower()
 
     if ext in EMAIL_EXTENSIONS:
         return convert_email(
             src_path,
-            lambda p: convert_one(p, use_ocr, _depth=_depth + 1),
+            lambda p: convert_one(p, use_ocr, _depth=_depth + 1, visual_context=visual_context),
             depth=_depth,
         )
 
@@ -44,6 +51,9 @@ def convert_one(src_path, use_ocr, _depth=0):
             assert_zip_is_safe(src_path)
         except UnsafeZipError as e:
             return f"(Refused to convert this zip file: {e})", "refused (unsafe zip)"
+
+    if ext in VIDEO_EXTENSIONS:
+        return convert_video(src_path, use_ocr, visual_context, output_assets_dir=output_assets_dir)
 
     result = _get_markitdown().convert(src_path)
     text = result.text_content

@@ -32,11 +32,15 @@ dependencies = [
     "Pillow>=12.3.0",
     "extract-msg>=0.56.0",
     "beautifulsoup4>=4.15.0",
+    "yt-dlp[default]>=2024.8.6",
+    "faster-whisper>=1.1.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 build = ["pyinstaller>=6.0"]
+video = ["faster-whisper>=1.1.0"]
+downloader = ["yt-dlp[default]>=2024.8.6"]
 
 [project.urls]
 Homepage = "https://github.com/Mohamed-Syed/AnyDoc2MD"

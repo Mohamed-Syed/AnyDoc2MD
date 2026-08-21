@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Local video digests for Reels/Shorts-style files.** MP4/MOV/M4V/WebM/MKV/AVI
+  inputs now route through a dedicated video converter that uses FFmpeg to
+  extract audio and sparse keyframes, optional `faster-whisper` for local
+  timestamped transcription, and existing Tesseract OCR for on-screen text.
+  The output is compact Markdown meant to be fed to an AI instead of repeatedly
+  uploading the original video.
+- **Video URL downloading through yt-dlp.** The GUI now has a URL panel that
+  processes one or more supported video links, writes a tiny source metadata
+  sidecar so the final video digest can include the original URL/title, and can
+  either keep the downloaded videos or create Markdown-only outputs. More URLs
+  can be pasted and added while an existing URL batch is still running.
+- **One-step URL to Markdown flow.** A new **Convert to .md file** checkbox
+  downloads each URL as a temporary working file, creates the `.md` digest, and
+  removes the video afterward. Leaving it unchecked keeps the downloaded video
+  and adds it to the normal batch list instead.
+- **Live URL batch progress.** URL downloads now update the progress bar and
+  status text with the current link number, yt-dlp percentage, and transferred
+  size instead of looking frozen until the file finishes.
+- **URL download size cap.** yt-dlp downloads are capped at 1 GB before
+  conversion starts, preventing an unexpectedly large URL from filling disk
+  space during a Markdown-only batch.
+- **Visual context modes for video digests.** The GUI now offers
+  `Transcript only`, `Balanced`, and `Scene-by-scene`. Scene-by-scene mode
+  writes selected keyframes into a sibling assets folder and links them from
+  the Markdown instead of embedding raw video data.
 - **Linux and macOS standalone builds**, alongside the existing Windows
   `.exe`. Each bundles a trimmed Tesseract OCR + Poppler for its own
   platform (Linux: apt's `tesseract-ocr`/`poppler-utils`; macOS:

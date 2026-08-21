@@ -10,10 +10,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-A desktop GUI that batch-converts PDFs, Office documents, images, and emails
-(`.eml` / `.msg`, attachments included) into Markdown — with OCR fallback for
-scanned content, recursive conversion of email attachments (including
-forwarded emails), and a fix for a common Arabic PDF text-extraction bug.
+A desktop GUI that batch-converts PDFs, Office documents, images, videos, and
+emails (`.eml` / `.msg`, attachments included) into Markdown — with OCR
+fallback for scanned content, recursive conversion of email attachments
+(including forwarded emails), local video digest generation, and a fix for a
+common Arabic PDF text-extraction bug.
 
 Built with the help of [Claude Code](https://claude.com/claude-code) — part
 of an ongoing effort to grow my technical capabilities alongside AI tools.
@@ -23,7 +24,19 @@ of an ongoing effort to grow my technical capabilities alongside AI tools.
 ## Features
 
 - **Broad format support**: PDF, DOCX, PPTX, XLSX/XLS, HTML, CSV, JSON, TXT,
-  images (PNG/JPG/GIF/BMP/TIFF), MP3/WAV, ZIP, and email (`.eml`, `.msg`).
+  images (PNG/JPG/GIF/BMP/TIFF), MP3/WAV, videos
+  (MP4/MOV/M4V/WebM/MKV/AVI), ZIP, and email (`.eml`, `.msg`).
+- **Video digests for Reels/Shorts**: local videos are converted to compact
+  Markdown containing metadata, optional timestamped speech transcription,
+  and OCR from sparse keyframes, so you can give an AI the digest instead of
+  repeatedly uploading the whole video.
+- **Visual context modes**: choose `Transcript only`, `Balanced`, or
+  `Scene-by-scene`. Scene-by-scene mode saves selected keyframe images next
+  to the Markdown and links them from the digest for richer AI review.
+- **Video URL batches**: paste one or more supported video URLs, process them
+  through yt-dlp with live per-link progress, and keep the original URL in the
+  generated Markdown. The URL panel can either create `.md` digests only or
+  download and keep the original videos.
 - **OCR fallback**: scanned PDFs and image files are OCR'd automatically via
   Tesseract when the normal text layer comes back empty or missing.
 - **Emails, properly**: `.eml`/`.msg` files are parsed for their headers and
@@ -46,9 +59,10 @@ of an ongoing effort to grow my technical capabilities alongside AI tools.
 
 **Option A: standalone build (recommended for most users).** Download the
 package for your platform from [Releases](../../releases) — nothing else
-to install; Tesseract OCR and Poppler are bundled in (see
-[Standalone build](#standalone-build) below for what exactly is bundled
-and why it's a large download).
+to install for document/image/email conversion; Tesseract OCR and Poppler are
+bundled in (see [Standalone build](#standalone-build) below for what exactly
+is bundled and why it's a large download). Video digests still need FFmpeg on
+the machine unless a future package bundles it too.
 
 | Platform | Download | Run |
 |---|---|---|
@@ -76,6 +90,7 @@ it with a plain double-click the first time. Right-click the app →
 ```powershell
 winget install UB-Mannheim.TesseractOCR
 winget install oschwartz10612.Poppler
+winget install Gyan.FFmpeg
 ```
 
 </td></tr>
@@ -83,6 +98,7 @@ winget install oschwartz10612.Poppler
 
 ```bash
 sudo apt install tesseract-ocr tesseract-ocr-eng poppler-utils
+sudo apt install ffmpeg
 ```
 
 </td></tr>
@@ -90,6 +106,7 @@ sudo apt install tesseract-ocr tesseract-ocr-eng poppler-utils
 
 ```bash
 brew install tesseract poppler
+brew install ffmpeg
 ```
 
 </td></tr>
@@ -97,18 +114,28 @@ brew install tesseract poppler
 
 - **Tesseract OCR** powers image/scanned-PDF text recognition.
 - **Poppler** renders PDF pages to images for the OCR fallback path.
+- **FFmpeg/FFprobe** powers local video audio extraction and sparse keyframe
+  extraction. Install it if you want MP4/MOV/WebM video digests.
+- **yt-dlp** powers URL downloads for supported video sites. It is used via
+  its Python API rather than by parsing command-line output.
 
 On Windows, if either is installed somewhere other than the default
 winget location, update the paths in
 [`anydoc2md/config.py`](anydoc2md/config.py) (`TESSERACT_EXE`,
-`POPPLER_BIN`). On Linux/macOS both are resolved from `PATH`, so a
-standard package-manager install just works.
+`POPPLER_BIN`). FFmpeg/FFprobe are resolved from `PATH`. On Linux/macOS the
+same is true for Tesseract/Poppler, so a standard package-manager install
+just works.
 
 ### 2. Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
+
+Video speech-to-text uses `faster-whisper`, which is installed with the normal
+Python dependencies. First use may download the selected Whisper model. You can
+set `ANYDOC2MD_WHISPER_MODEL=small` (or another faster-whisper model name)
+before launching the app if you want a different transcription model.
 
 ## Usage
 
@@ -124,17 +151,28 @@ app from that virtual environment — so it never depends on whichever
 `python` happens to be on your `PATH`.
 
 1. **Add Files...** or **Add Folder...** to queue up documents.
-2. Optionally choose an output folder (defaults to saving each `.md` next
+2. Paste one or more video URLs and click **Process URLs**. While a URL batch
+   is running, paste more links into the same box and click **Add URLs** to
+   append them to the running queue. Leave
+   **Convert to .md file** checked when you only want the Markdown digest; the
+   app downloads the video as a temporary working file, creates the `.md`, then
+   removes the video. Uncheck it when you want to download and keep the video
+   file instead. Enable **Use browser cookies** when Instagram or another site
+   only works while you are logged in through your browser.
+3. Optionally choose an output folder (defaults to saving each `.md` next
    to its source file).
-3. Leave **Use OCR** checked to handle scanned PDFs and images.
-4. Click **Convert All to .md** — status and a live log update per file as
+4. Leave **Use OCR** checked to handle scanned PDFs and images.
+5. Choose a **Visual context** mode for videos:
+   `Transcript only` skips frames, `Balanced` samples sparse keyframes, and
+   `Scene-by-scene` saves linked keyframe images beside the `.md`.
+6. Click **Convert All to .md** — status and a live log update per file as
    conversions complete.
 
 ## Standalone build
 
 `anydoc2md.spec` builds a self-contained bundle (via PyInstaller) that
 needs nothing installed on the target machine — not even Python — for
-Windows, Linux, and macOS. It bundles:
+document/image/email conversion on Windows, Linux, and macOS. It bundles:
 
 - The full Python runtime and all pip dependencies (~250-300 MB, driven
   mostly by `onnxruntime`, which is kept because MarkItDown uses it for
@@ -154,6 +192,10 @@ Total build size lands around 400-450 MB. That's the honest cost of
 "works on a fresh machine with zero setup" — Tesseract's own OCR engine
 alone is over 100 MB and can't be shrunk further without recompiling
 Tesseract from source.
+
+FFmpeg is intentionally not bundled yet. Video digest conversion will use a
+bundled `vendor/ffmpeg` copy if one is present, otherwise it looks for
+`ffmpeg` and `ffprobe` on `PATH`.
 
 **PyInstaller cannot cross-compile**: a Windows build only comes from
 running on Windows, and likewise for Linux/macOS. The Linux and macOS
@@ -198,6 +240,8 @@ The package is organized by concern under `anydoc2md/`:
 | `converter.py` | Top-level dispatch: routes each file to the right conversion path by extension. |
 | `email_convert.py` | Parses `.eml`/`.msg`, extracts attachments, recurses them back through `converter.py`. |
 | `ocr.py` | Tesseract/Poppler-backed OCR for images and scanned PDFs. |
+| `video_download.py` | yt-dlp-backed URL downloads, plus small source metadata sidecars for converted video Markdown. |
+| `video_convert.py` | FFmpeg/faster-whisper/Tesseract-backed video digests for local video files. |
 | `arabic.py` | The Arabic PDF text-order fix. |
 | `text_utils.py` | Shared string-cleaning helpers (filename sanitizing, HTML-to-text, control-character stripping). |
 | `safety.py` | Guards against maliciously crafted input (see [Security](#security) below). |
@@ -265,10 +309,11 @@ to report a vulnerability.
   `xdg-open`) — is handed an argument list containing a directory the app
   itself created, never anything derived from document content. The two
   dependencies that shell out (`pytesseract`, `pdf2image`) invoke
-  Tesseract/Poppler with argument lists (never `shell=True`), and every
-  path this project passes to them is an absolute path built via
-  `os.path.join`/`tempfile.mkdtemp` — never a bare, attacker-controlled
-  string that could be misread as a command-line flag.
+  Tesseract/Poppler with argument lists (never `shell=True`), the video
+  converter invokes FFmpeg/FFprobe the same way, and every path this project
+  passes to them is an absolute path built via `os.path.join`/`tempfile.mkdtemp`
+  — never a bare, attacker-controlled string that could be misread as a
+  command-line flag.
 
 ## Built on
 
@@ -291,6 +336,14 @@ endorsed by Microsoft.
   just slower.
 - **No image preprocessing** (deskew, contrast enhancement) is applied
   before OCR, so quality depends on the source image/scan quality.
+- **URL download support depends on yt-dlp and the source site.** Some sites
+  require login cookies, block automated downloads, or change their pages.
+  Try **Use browser cookies** for videos that open in your browser but fail in
+  the app. URL downloads are capped at 1 GB before conversion starts. When a
+  URL still cannot be downloaded, download the video manually and add the local
+  MP4/MOV/WebM file.
+- **Video transcription is optional.** Install `faster-whisper` to transcribe
+  speech locally. First use may download the selected Whisper model.
 - **The Arabic text-order fix is a targeted heuristic, not a full Unicode
   Bidirectional Algorithm implementation.** It reliably fixes flowing
   paragraph text, but PDF **table cells** can cluster glyphs differently at

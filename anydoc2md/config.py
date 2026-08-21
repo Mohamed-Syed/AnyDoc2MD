@@ -77,6 +77,21 @@ else:
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"}
 EMAIL_EXTENSIONS = {".eml", ".msg"}
 ZIP_EXTENSIONS = {".zip"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi"}
+
+# Video digest support shells out to FFmpeg/FFprobe with argument lists
+# (never shell=True). Running from source expects both tools on PATH; a
+# frozen build may also ship them under vendor/ffmpeg in the future.
+if _FROZEN_BASE:
+    _ffmpeg_binary = "ffmpeg.exe" if _IS_WINDOWS else "ffmpeg"
+    _ffprobe_binary = "ffprobe.exe" if _IS_WINDOWS else "ffprobe"
+    _bundled_ffmpeg = os.path.join(_FROZEN_BASE, "vendor", "ffmpeg", _ffmpeg_binary)
+    _bundled_ffprobe = os.path.join(_FROZEN_BASE, "vendor", "ffmpeg", _ffprobe_binary)
+    FFMPEG_EXE = _bundled_ffmpeg if os.path.exists(_bundled_ffmpeg) else (shutil.which("ffmpeg") or "ffmpeg")
+    FFPROBE_EXE = _bundled_ffprobe if os.path.exists(_bundled_ffprobe) else (shutil.which("ffprobe") or "ffprobe")
+else:
+    FFMPEG_EXE = shutil.which("ffmpeg") or "ffmpeg"
+    FFPROBE_EXE = shutil.which("ffprobe") or "ffprobe"
 
 # Below this many characters, a PDF's normal text layer is treated as
 # "essentially empty" (i.e. a scanned PDF), triggering OCR fallback.
@@ -122,21 +137,44 @@ MAX_OCR_IMAGE_PIXELS = 80_000_000
 MAX_EMAIL_ATTACHMENTS = 100
 MAX_EMAIL_ATTACHMENT_TOTAL_BYTES = 300 * 1024 * 1024  # 300 MB
 
+# Video conversion caps. Reels and Shorts are normally under a few minutes,
+# but the app accepts untrusted files, so bound expensive transcription and
+# frame OCR work before it starts.
+MAX_VIDEO_DURATION_SECONDS = 60 * 60
+MAX_VIDEO_KEYFRAMES = 40
+MAX_VIDEO_SCENE_KEYFRAMES = 120
+VIDEO_KEYFRAME_INTERVAL_SECONDS = 8
+VIDEO_SCENE_INTERVAL_SECONDS = 2
+VIDEO_TRANSCRIPT_MODEL = os.environ.get("ANYDOC2MD_WHISPER_MODEL", "base")
+VIDEO_TRANSCRIPT_DEVICE = os.environ.get("ANYDOC2MD_WHISPER_DEVICE", "cpu")
+VIDEO_TRANSCRIPT_COMPUTE_TYPE = os.environ.get("ANYDOC2MD_WHISPER_COMPUTE_TYPE", "int8")
+VISUAL_CONTEXT_TRANSCRIPT_ONLY = "transcript_only"
+VISUAL_CONTEXT_BALANCED = "balanced"
+VISUAL_CONTEXT_SCENE_BY_SCENE = "scene_by_scene"
+VISUAL_CONTEXT_MODES = {
+    VISUAL_CONTEXT_TRANSCRIPT_ONLY,
+    VISUAL_CONTEXT_BALANCED,
+    VISUAL_CONTEXT_SCENE_BY_SCENE,
+}
+
 SUPPORTED_TYPES = [
     ("All supported files",
      "*.pdf *.docx *.pptx *.xlsx *.xls *.html *.htm *.csv *.json *.txt "
-     "*.png *.jpg *.jpeg *.gif *.bmp *.mp3 *.wav *.zip *.eml *.msg"),
+     "*.png *.jpg *.jpeg *.gif *.bmp *.mp3 *.wav *.mp4 *.mov *.m4v "
+     "*.webm *.mkv *.avi *.zip *.eml *.msg"),
     ("PDF files", "*.pdf"),
     ("Word documents", "*.docx"),
     ("PowerPoint files", "*.pptx"),
     ("Excel files", "*.xlsx *.xls"),
     ("Email files", "*.eml *.msg"),
     ("Images", "*.png *.jpg *.jpeg *.gif *.bmp"),
+    ("Videos", "*.mp4 *.mov *.m4v *.webm *.mkv *.avi"),
     ("All files", "*.*"),
 ]
 
 FOLDER_SCAN_EXTENSIONS = {
     ".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".html", ".htm",
     ".csv", ".json", ".txt", ".png", ".jpg", ".jpeg", ".gif",
-    ".bmp", ".mp3", ".wav", ".zip", ".eml", ".msg",
+    ".bmp", ".mp3", ".wav", ".mp4", ".mov", ".m4v", ".webm",
+    ".mkv", ".avi", ".zip", ".eml", ".msg",
 }

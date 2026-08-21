@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.png" alt="AnyDoc2MD — Convert Any Document to Clean Markdown. Simple. Fast. Private." width="100%">
+  <img src="assets/hero.png" alt="AnyDoc2MD — Convert documents, videos, URLs, and emails into clean Markdown for AI." width="100%">
 </p>
 
 # AnyDoc2MD

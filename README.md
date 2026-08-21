@@ -118,7 +118,10 @@ python -m anydoc2md
 
 or, on Windows, double-click `run_anydoc2md.bat` for a no-console launch
 (source install only — the standalone builds need no launcher on any
-platform).
+platform). On its first run the launcher creates a local `.venv` and
+installs the dependencies into it automatically, then always starts the
+app from that virtual environment — so it never depends on whichever
+`python` happens to be on your `PATH`.
 
 1. **Add Files...** or **Add Folder...** to queue up documents.
 2. Optionally choose an output folder (defaults to saving each `.md` next
